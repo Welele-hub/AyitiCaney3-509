@@ -1,0 +1,561 @@
+from django.db import models
+from django.contrib.auth.models import AbstractUser
+from django.core.validators import MinValueValidator, MaxValueValidator
+from django.utils.translation import gettext_lazy as _
+from django.utils import timezone
+
+
+# ============================================
+# CUSTOM USER MODEL
+# ============================================
+class User(AbstractUser):
+    """
+    Custom user model for AyitiCaney platform
+    Supports both Locataires (renters) and Propriétaires (owners)
+    """
+    ACCOUNT_TYPE_CHOICES = [
+        ('locataire', _('Locataire (User/Renter)')),
+        ('proprietaire', _('Propriétaire (Owner)')),
+    ]
+    
+    LANGUAGE_CHOICES = [
+        ('en', _('English')),
+        ('fr', _('Français')),
+    ]
+    
+    account_type = models.CharField(
+        max_length=20,
+        choices=ACCOUNT_TYPE_CHOICES,
+        verbose_name=_('Account Type')
+    )
+    
+    age = models.IntegerField(
+        validators=[MinValueValidator(14), MaxValueValidator(200)],
+        verbose_name=_('Age'),
+        help_text=_('Must be between 14 and 200 years old')
+    )
+    
+    phone_number = models.CharField(
+        max_length=20,
+        blank=True,
+        verbose_name=_('Phone Number')
+    )
+    
+    whatsapp_number = models.CharField(
+        max_length=20,
+        blank=True,
+        verbose_name=_('WhatsApp Number')
+    )
+    
+    profile_picture = models.ImageField(
+        upload_to='profiles/',
+        blank=True,
+        null=True,
+        verbose_name=_('Profile Picture')
+    )
+    
+    preferred_language = models.CharField(
+        max_length=2,
+        choices=LANGUAGE_CHOICES,
+        default='fr',
+        verbose_name=_('Preferred Language')
+    )
+    
+    is_verified = models.BooleanField(
+        default=False,
+        verbose_name=_('Verified Owner'),
+        help_text=_('Badge for verified property owners')
+    )
+    
+    is_suspended = models.BooleanField(
+        default=False,
+        verbose_name=_('Account Suspended')
+    )
+    
+    suspension_reason = models.TextField(
+        blank=True,
+        verbose_name=_('Suspension Reason')
+    )
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = _('User')
+        verbose_name_plural = _('Users')
+    
+    def __str__(self):
+        return f"{self.username} ({self.get_account_type_display()})"
+
+
+# ============================================
+# LOCATION MODELS
+# ============================================
+class Department(models.Model):
+    """
+    Haiti's 10 departments (départements)
+    """
+    name_en = models.CharField(max_length=100, verbose_name=_('Name (English)'))
+    name_fr = models.CharField(max_length=100, verbose_name=_('Name (French)'))
+    slug = models.SlugField(unique=True)
+    description = models.TextField(blank=True)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        verbose_name = _('Department')
+        verbose_name_plural = _('Departments')
+        ordering = ['name_en']
+    
+    def __str__(self):
+        return self.name_en
+
+
+class City(models.Model):
+    """
+    Cities and communes within each department
+    """
+    department = models.ForeignKey(
+        Department,
+        on_delete=models.CASCADE,
+        related_name='cities',
+        verbose_name=_('Department')
+    )
+    
+    name_en = models.CharField(max_length=100, verbose_name=_('Name (English)'))
+    name_fr = models.CharField(max_length=100, verbose_name=_('Name (French)'))
+    slug = models.SlugField()
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        verbose_name = _('City')
+        verbose_name_plural = _('Cities')
+        ordering = ['name_en']
+        unique_together = ['department', 'slug']
+    
+    def __str__(self):
+        return f"{self.name_en}, {self.department.name_en}"
+
+
+# ============================================
+# PROPERTY MODELS
+# ============================================
+class Property(models.Model):
+    """
+    Main property/house listing model
+    """
+    PROPERTY_TYPE_CHOICES = [
+        ('apartment', _('Apartment')),
+        ('house', _('House')),
+        ('studio', _('Studio')),
+        ('duplex', _('Duplex')),
+        ('villa', _('Villa')),
+    ]
+    
+    AVAILABILITY_STATUS = [
+        ('available', _('Available')),
+        ('rented', _('Rented')),
+        ('pending', _('Pending')),
+        ('unavailable', _('Unavailable')),
+    ]
+    
+    owner = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='properties',
+        limit_choices_to={'account_type': 'proprietaire'},
+        verbose_name=_('Owner')
+    )
+    
+    title = models.CharField(max_length=200, verbose_name=_('Property Title'))
+    
+    property_type = models.CharField(
+        max_length=20,
+        choices=PROPERTY_TYPE_CHOICES,
+        verbose_name=_('Property Type')
+    )
+    
+    description = models.TextField(verbose_name=_('Description'))
+    
+    price = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        verbose_name=_('Monthly Price (HTG)'),
+        help_text=_('Price in Haitian Gourdes')
+    )
+    
+    # Location
+    department = models.ForeignKey(
+        Department,
+        on_delete=models.PROTECT,
+        related_name='properties',
+        verbose_name=_('Department')
+    )
+    
+    city = models.ForeignKey(
+        City,
+        on_delete=models.PROTECT,
+        related_name='properties',
+        verbose_name=_('City')
+    )
+    
+    address = models.CharField(
+        max_length=255,
+        verbose_name=_('Street Address'),
+        help_text=_('Specific address or neighborhood')
+    )
+    
+    # Property details
+    bedrooms = models.IntegerField(
+        default=1,
+        validators=[MinValueValidator(0)],
+        verbose_name=_('Bedrooms')
+    )
+    
+    bathrooms = models.IntegerField(
+        default=1,
+        validators=[MinValueValidator(0)],
+        verbose_name=_('Bathrooms')
+    )
+    
+    area_sqm = models.DecimalField(
+        max_digits=8,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        verbose_name=_('Area (m²)')
+    )
+    
+    # Status
+    availability_status = models.CharField(
+        max_length=20,
+        choices=AVAILABILITY_STATUS,
+        default='available',
+        verbose_name=_('Availability Status')
+    )
+    
+    # Moderation
+    is_approved = models.BooleanField(
+        default=False,
+        verbose_name=_('Approved by Admin')
+    )
+    
+    is_reported = models.BooleanField(
+        default=False,
+        verbose_name=_('Reported')
+    )
+    
+    report_count = models.IntegerField(default=0)
+    
+    # Metrics
+    view_count = models.IntegerField(default=0, verbose_name=_('View Count'))
+    
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = _('Property')
+        verbose_name_plural = _('Properties')
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['department', 'city']),
+            models.Index(fields=['availability_status']),
+            models.Index(fields=['-created_at']),
+        ]
+    
+    def __str__(self):
+        return f"{self.title} - {self.city.name_en}"
+    
+    def increment_views(self):
+        """Increment view count"""
+        self.view_count += 1
+        self.save(update_fields=['view_count'])
+
+
+class PropertyImage(models.Model):
+    """
+    Multiple images for each property
+    """
+    property = models.ForeignKey(
+        Property,
+        on_delete=models.CASCADE,
+        related_name='images',
+        verbose_name=_('Property')
+    )
+    
+    image = models.ImageField(
+        upload_to='properties/',
+        verbose_name=_('Image')
+    )
+    
+    caption = models.CharField(
+        max_length=200,
+        blank=True,
+        verbose_name=_('Caption')
+    )
+    
+    is_primary = models.BooleanField(
+        default=False,
+        verbose_name=_('Primary Image'),
+        help_text=_('Main thumbnail image')
+    )
+    
+    order = models.IntegerField(
+        default=0,
+        verbose_name=_('Display Order')
+    )
+    
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        verbose_name = _('Property Image')
+        verbose_name_plural = _('Property Images')
+        ordering = ['order', 'uploaded_at']
+    
+    def __str__(self):
+        return f"Image for {self.property.title}"
+
+
+# ============================================
+# WISHLIST / SAVED HOUSES
+# ============================================
+class Wishlist(models.Model):
+    """
+    User's saved/favorite properties
+    """
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='wishlist',
+        limit_choices_to={'account_type': 'locataire'},
+        verbose_name=_('User')
+    )
+    
+    property = models.ForeignKey(
+        Property,
+        on_delete=models.CASCADE,
+        related_name='wishlisted_by',
+        verbose_name=_('Property')
+    )
+    
+    added_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        verbose_name = _('Wishlist Item')
+        verbose_name_plural = _('Wishlist Items')
+        unique_together = ['user', 'property']
+        ordering = ['-added_at']
+    
+    def __str__(self):
+        return f"{self.user.username} saved {self.property.title}"
+
+
+# ============================================
+# CHAT/MESSAGING SYSTEM
+# ============================================
+class Conversation(models.Model):
+    """
+    Chat conversation between a locataire and proprietaire about a property
+    """
+    property = models.ForeignKey(
+        Property,
+        on_delete=models.CASCADE,
+        related_name='conversations',
+        verbose_name=_('Property')
+    )
+    
+    locataire = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='conversations_as_locataire',
+        limit_choices_to={'account_type': 'locataire'},
+        verbose_name=_('Locataire')
+    )
+    
+    proprietaire = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='conversations_as_proprietaire',
+        limit_choices_to={'account_type': 'proprietaire'},
+        verbose_name=_('Propriétaire')
+    )
+    
+    is_active = models.BooleanField(default=True)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = _('Conversation')
+        verbose_name_plural = _('Conversations')
+        unique_together = ['property', 'locataire', 'proprietaire']
+        ordering = ['-updated_at']
+    
+    def __str__(self):
+        return f"Chat: {self.locataire.username} & {self.proprietaire.username} about {self.property.title}"
+
+
+class Message(models.Model):
+    """
+    Individual messages within a conversation
+    """
+    conversation = models.ForeignKey(
+        Conversation,
+        on_delete=models.CASCADE,
+        related_name='messages',
+        verbose_name=_('Conversation')
+    )
+    
+    sender = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='sent_messages',
+        verbose_name=_('Sender')
+    )
+    
+    content = models.TextField(verbose_name=_('Message Content'))
+    
+    is_read = models.BooleanField(default=False, verbose_name=_('Read'))
+    
+    read_at = models.DateTimeField(null=True, blank=True)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        verbose_name = _('Message')
+        verbose_name_plural = _('Messages')
+        ordering = ['created_at']
+    
+    def __str__(self):
+        return f"Message from {self.sender.username} at {self.created_at}"
+    
+    def mark_as_read(self):
+        """Mark message as read"""
+        if not self.is_read:
+            self.is_read = True
+            self.read_at = timezone.now()
+            self.save(update_fields=['is_read', 'read_at'])
+
+
+# ============================================
+# REPORTING SYSTEM
+# ============================================
+class PropertyReport(models.Model):
+    """
+    User reports for suspicious or inappropriate listings
+    """
+    REPORT_REASONS = [
+        ('fake', _('Fake Listing')),
+        ('spam', _('Spam')),
+        ('inappropriate', _('Inappropriate Content')),
+        ('duplicate', _('Duplicate Listing')),
+        ('scam', _('Suspected Scam')),
+        ('incorrect_info', _('Incorrect Information')),
+        ('other', _('Other')),
+    ]
+    
+    REPORT_STATUS = [
+        ('pending', _('Pending Review')),
+        ('reviewed', _('Reviewed')),
+        ('action_taken', _('Action Taken')),
+        ('dismissed', _('Dismissed')),
+    ]
+    
+    property = models.ForeignKey(
+        Property,
+        on_delete=models.CASCADE,
+        related_name='reports',
+        verbose_name=_('Property')
+    )
+    
+    reporter = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='submitted_reports',
+        verbose_name=_('Reporter')
+    )
+    
+    reason = models.CharField(
+        max_length=20,
+        choices=REPORT_REASONS,
+        verbose_name=_('Reason')
+    )
+    
+    description = models.TextField(
+        verbose_name=_('Description'),
+        help_text=_('Please provide details')
+    )
+    
+    status = models.CharField(
+        max_length=20,
+        choices=REPORT_STATUS,
+        default='pending',
+        verbose_name=_('Status')
+    )
+    
+    admin_notes = models.TextField(
+        blank=True,
+        verbose_name=_('Admin Notes')
+    )
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    
+    class Meta:
+        verbose_name = _('Property Report')
+        verbose_name_plural = _('Property Reports')
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"Report for {self.property.title} - {self.get_reason_display()}"
+
+
+# ============================================
+# SITE SETTINGS & LEGAL
+# ============================================
+class SiteSettings(models.Model):
+    """
+    Global site settings (singleton model)
+    """
+    site_name = models.CharField(max_length=100, default='AyitiCaney')
+    
+    disclaimer_en = models.TextField(
+        verbose_name=_('Disclaimer (English)'),
+        default='AyitiCaney is a connection platform. No online payments are made on this website. All agreements are done directly between owner and user.'
+    )
+    
+    disclaimer_fr = models.TextField(
+        verbose_name=_('Disclaimer (French)'),
+        default='AyitiCaney est une plateforme de connexion. Aucun paiement en ligne n\'est effectué sur ce site. Tous les accords se font directement entre propriétaire et locataire.'
+    )
+    
+    terms_and_conditions = models.TextField(blank=True)
+    privacy_policy = models.TextField(blank=True)
+    
+    contact_email = models.EmailField(default='contact@ayiticaney.ht')
+    contact_phone = models.CharField(max_length=20, blank=True)
+    
+    maintenance_mode = models.BooleanField(default=False)
+    
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = _('Site Settings')
+        verbose_name_plural = _('Site Settings')
+    
+    def __str__(self):
+        return self.site_name
+    
+    def save(self, *args, **kwargs):
+        """Ensure only one instance exists"""
+        self.pk = 1
+        super().save(*args, **kwargs)
+    
+    @classmethod
+    def load(cls):
+        """Load the singleton instance"""
+        obj, created = cls.objects.get_or_create(pk=1)
+        return obj

@@ -1,0 +1,652 @@
+from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib.auth import login, authenticate, logout
+from django.contrib.auth.decorators import login_required
+from django.contrib import messages
+from django.db.models import Q, Count, Prefetch
+from django.core.paginator import Paginator
+from django.http import JsonResponse
+from django.views.decorators.http import require_POST
+from django.utils.translation import gettext as _
+from django.utils import timezone
+
+from .models import (
+    User, Department, City, Property, PropertyImage,
+    Wishlist, Conversation, Message, PropertyReport, SiteSettings
+)
+from .forms import (
+    UserRegistrationForm, PropertyForm, PropertyImageFormSet,
+    MessageForm, PropertyReportForm, UserProfileForm
+)
+
+
+# ============================================
+# HOME & GENERAL VIEWS
+# ============================================
+def home_view(request):
+    """
+    Homepage with featured properties and search
+    """
+    # Get latest available properties
+    featured_properties = Property.objects.filter(
+        is_approved=True,
+        availability_status='available'
+    ).select_related('department', 'city', 'owner').prefetch_related(
+        Prefetch('images', queryset=PropertyImage.objects.filter(is_primary=True))
+    ).order_by('-created_at')[:8]
+    
+    # Get all departments for search filter
+    departments = Department.objects.all().order_by('name_en')
+    
+    # Get site settings
+    site_settings = SiteSettings.load()
+    
+    # Get statistics
+    stats = {
+        'total_properties': Property.objects.filter(is_approved=True).count(),
+        'available_properties': Property.objects.filter(
+            is_approved=True, 
+            availability_status='available'
+        ).count(),
+        'total_owners': User.objects.filter(account_type='proprietaire').count(),
+        'departments_count': departments.count(),
+    }
+    
+    context = {
+        'featured_properties': featured_properties,
+        'departments': departments,
+        'site_settings': site_settings,
+        'stats': stats,
+    }
+    
+    return render(request, 'rental/home.html', context)
+
+
+def about_view(request):
+    """
+    About AyitiCaney page
+    """
+    site_settings = SiteSettings.load()
+    return render(request, 'rental/about.html', {'site_settings': site_settings})
+
+
+def contact_view(request):
+    """
+    Contact page
+    """
+    site_settings = SiteSettings.load()
+    
+    if request.method == 'POST':
+        # Handle contact form submission
+        name = request.POST.get('name')
+        email = request.POST.get('email')
+        subject = request.POST.get('subject')
+        message = request.POST.get('message')
+        
+        # TODO: Send email or save to database
+        messages.success(request, _('Your message has been sent successfully!'))
+        return redirect('contact')
+    
+    return render(request, 'rental/contact.html', {'site_settings': site_settings})
+
+
+# ============================================
+# AUTHENTICATION VIEWS
+# ============================================
+def register_view(request):
+    """
+    User registration (Locataire or Propriétaire)
+    """
+    if request.user.is_authenticated:
+        return redirect('home')
+    
+    if request.method == 'POST':
+        form = UserRegistrationForm(request.POST, request.FILES)
+        if form.is_valid():
+            user = form.save()
+            login(request, user)
+            
+            if user.account_type == 'proprietaire':
+                messages.success(
+                    request,
+                    _('Welcome! You can now start listing your properties.')
+                )
+                return redirect('owner_dashboard')
+            else:
+                messages.success(
+                    request,
+                    _('Welcome! Start searching for your perfect home.')
+                )
+                return redirect('search_properties')
+        else:
+            messages.error(request, _('Please correct the errors below.'))
+    else:
+        form = UserRegistrationForm()
+    
+    return render(request, 'rental/register.html', {'form': form})
+
+
+def login_view(request):
+    """
+    User login
+    """
+    if request.user.is_authenticated:
+        return redirect('home')
+    
+    if request.method == 'POST':
+        username = request.POST.get('username')
+        password = request.POST.get('password')
+        
+        user = authenticate(request, username=username, password=password)
+        
+        if user is not None:
+            if user.is_suspended:
+                messages.error(
+                    request,
+                    _('Your account has been suspended. Reason: {}').format(
+                        user.suspension_reason or _('Policy violation')
+                    )
+                )
+            else:
+                login(request, user)
+                next_url = request.GET.get('next', 'home')
+                return redirect(next_url)
+        else:
+            messages.error(request, _('Invalid username or password.'))
+    
+    return render(request, 'rental/login.html')
+
+
+@login_required
+def logout_view(request):
+    """
+    User logout
+    """
+    logout(request)
+    messages.success(request, _('You have been logged out successfully.'))
+    return redirect('home')
+
+
+# ============================================
+# PROPERTY SEARCH & LISTING VIEWS
+# ============================================
+def search_properties_view(request):
+    """
+    Search and filter properties
+    """
+    properties = Property.objects.filter(
+        is_approved=True
+    ).select_related('department', 'city', 'owner').prefetch_related(
+        Prefetch('images', queryset=PropertyImage.objects.filter(is_primary=True))
+    )
+    
+    # Filters
+    department_id = request.GET.get('department')
+    city_id = request.GET.get('city')
+    property_type = request.GET.get('property_type')
+    min_price = request.GET.get('min_price')
+    max_price = request.GET.get('max_price')
+    availability = request.GET.get('availability')
+    search_query = request.GET.get('q')
+    
+    if department_id:
+        properties = properties.filter(department_id=department_id)
+    
+    if city_id:
+        properties = properties.filter(city_id=city_id)
+    
+    if property_type:
+        properties = properties.filter(property_type=property_type)
+    
+    if min_price:
+        properties = properties.filter(price__gte=min_price)
+    
+    if max_price:
+        properties = properties.filter(price__lte=max_price)
+    
+    if availability:
+        properties = properties.filter(availability_status=availability)
+    else:
+        properties = properties.filter(availability_status='available')
+    
+    if search_query:
+        properties = properties.filter(
+            Q(title__icontains=search_query) |
+            Q(description__icontains=search_query) |
+            Q(address__icontains=search_query)
+        )
+    
+    # Ordering
+    order_by = request.GET.get('order_by', '-created_at')
+    properties = properties.order_by(order_by)
+    
+    # Pagination
+    paginator = Paginator(properties, 12)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    # Get filter options
+    departments = Department.objects.all()
+    cities = City.objects.all()
+    
+    if department_id:
+        cities = cities.filter(department_id=department_id)
+    
+    context = {
+        'page_obj': page_obj,
+        'departments': departments,
+        'cities': cities,
+        'property_types': Property.PROPERTY_TYPE_CHOICES,
+        'current_filters': request.GET,
+    }
+    
+    return render(request, 'rental/search_properties.html', context)
+
+
+def property_detail_view(request, property_id):
+    """
+    Single property detail page
+    """
+    property_obj = get_object_or_404(
+        Property.objects.select_related('department', 'city', 'owner').prefetch_related('images'),
+        id=property_id,
+        is_approved=True
+    )
+    
+    # Increment view count
+    property_obj.increment_views()
+    
+    # Check if user has saved this property
+    is_saved = False
+    if request.user.is_authenticated and request.user.account_type == 'locataire':
+        is_saved = Wishlist.objects.filter(
+            user=request.user,
+            property=property_obj
+        ).exists()
+    
+    # Get related properties (same city or department)
+    related_properties = Property.objects.filter(
+        Q(city=property_obj.city) | Q(department=property_obj.department),
+        is_approved=True,
+        availability_status='available'
+    ).exclude(id=property_obj.id).select_related(
+        'department', 'city'
+    ).prefetch_related(
+        Prefetch('images', queryset=PropertyImage.objects.filter(is_primary=True))
+    )[:4]
+    
+    context = {
+        'property': property_obj,
+        'is_saved': is_saved,
+        'related_properties': related_properties,
+    }
+    
+    return render(request, 'rental/property_detail.html', context)
+
+
+# ============================================
+# OWNER DASHBOARD & PROPERTY MANAGEMENT
+# ============================================
+@login_required
+def owner_dashboard_view(request):
+    """
+    Dashboard for property owners
+    """
+    if request.user.account_type != 'proprietaire':
+        messages.error(request, _('Access denied. Owner account required.'))
+        return redirect('home')
+    
+    # Get owner's properties
+    properties = Property.objects.filter(
+        owner=request.user
+    ).select_related('department', 'city').prefetch_related('images').annotate(
+        wishlist_count=Count('wishlisted_by'),
+        conversation_count=Count('conversations')
+    ).order_by('-created_at')
+    
+    # Statistics
+    stats = {
+        'total_properties': properties.count(),
+        'available': properties.filter(availability_status='available').count(),
+        'rented': properties.filter(availability_status='rented').count(),
+        'pending_approval': properties.filter(is_approved=False).count(),
+        'total_views': sum(p.view_count for p in properties),
+    }
+    
+    context = {
+        'properties': properties,
+        'stats': stats,
+    }
+    
+    return render(request, 'rental/owner_dashboard.html', context)
+
+
+@login_required
+def create_property_view(request):
+    """
+    Create new property listing
+    """
+    if request.user.account_type != 'proprietaire':
+        messages.error(request, _('Only property owners can create listings.'))
+        return redirect('home')
+    
+    if request.method == 'POST':
+        form = PropertyForm(request.POST)
+        image_formset = PropertyImageFormSet(request.POST, request.FILES)
+        
+        if form.is_valid() and image_formset.is_valid():
+            property_obj = form.save(commit=False)
+            property_obj.owner = request.user
+            property_obj.save()
+            
+            # Save images
+            images = image_formset.save(commit=False)
+            for image in images:
+                image.property = property_obj
+                image.save()
+            
+            messages.success(
+                request,
+                _('Property created successfully! It will be visible after admin approval.')
+            )
+            return redirect('owner_dashboard')
+    else:
+        form = PropertyForm()
+        image_formset = PropertyImageFormSet()
+    
+    context = {
+        'form': form,
+        'image_formset': image_formset,
+    }
+    
+    return render(request, 'rental/create_property.html', context)
+
+
+@login_required
+def edit_property_view(request, property_id):
+    """
+    Edit existing property
+    """
+    property_obj = get_object_or_404(Property, id=property_id, owner=request.user)
+    
+    if request.method == 'POST':
+        form = PropertyForm(request.POST, instance=property_obj)
+        image_formset = PropertyImageFormSet(
+            request.POST,
+            request.FILES,
+            instance=property_obj
+        )
+        
+        if form.is_valid() and image_formset.is_valid():
+            form.save()
+            image_formset.save()
+            messages.success(request, _('Property updated successfully!'))
+            return redirect('owner_dashboard')
+    else:
+        form = PropertyForm(instance=property_obj)
+        image_formset = PropertyImageFormSet(instance=property_obj)
+    
+    context = {
+        'form': form,
+        'image_formset': image_formset,
+        'property': property_obj,
+    }
+    
+    return render(request, 'rental/edit_property.html', context)
+
+
+@login_required
+def delete_property_view(request, property_id):
+    """
+    Delete property
+    """
+    property_obj = get_object_or_404(Property, id=property_id, owner=request.user)
+    
+    if request.method == 'POST':
+        property_obj.delete()
+        messages.success(request, _('Property deleted successfully.'))
+        return redirect('owner_dashboard')
+    
+    return render(request, 'rental/delete_property_confirm.html', {'property': property_obj})
+
+
+# ============================================
+# USER DASHBOARD & WISHLIST
+# ============================================
+@login_required
+def user_dashboard_view(request):
+    """
+    Dashboard for locataires (renters)
+    """
+    if request.user.account_type != 'locataire':
+        messages.error(request, _('Access denied. User account required.'))
+        return redirect('home')
+    
+    # Get saved properties
+    saved_properties = Wishlist.objects.filter(
+        user=request.user
+    ).select_related('property__department', 'property__city').prefetch_related(
+        Prefetch('property__images', queryset=PropertyImage.objects.filter(is_primary=True))
+    ).order_by('-added_at')
+    
+    # Get user's conversations
+    conversations = Conversation.objects.filter(
+        locataire=request.user,
+        is_active=True
+    ).select_related('property', 'proprietaire').annotate(
+        unread_count=Count('messages', filter=Q(messages__is_read=False, messages__sender__account_type='proprietaire'))
+    ).order_by('-updated_at')
+    
+    context = {
+        'saved_properties': saved_properties,
+        'conversations': conversations,
+    }
+    
+    return render(request, 'rental/user_dashboard.html', context)
+
+
+@login_required
+@require_POST
+def toggle_wishlist_view(request, property_id):
+    """
+    Add or remove property from wishlist (AJAX)
+    """
+    if request.user.account_type != 'locataire':
+        return JsonResponse({'error': 'Only users can save properties'}, status=403)
+    
+    property_obj = get_object_or_404(Property, id=property_id)
+    
+    wishlist_item, created = Wishlist.objects.get_or_create(
+        user=request.user,
+        property=property_obj
+    )
+    
+    if not created:
+        wishlist_item.delete()
+        is_saved = False
+        message = _('Property removed from saved list')
+    else:
+        is_saved = True
+        message = _('Property saved successfully!')
+    
+    return JsonResponse({
+        'is_saved': is_saved,
+        'message': str(message)
+    })
+
+
+# ============================================
+# MESSAGING VIEWS
+# ============================================
+@login_required
+def conversations_view(request):
+    """
+    List all conversations for current user
+    """
+    if request.user.account_type == 'locataire':
+        conversations = Conversation.objects.filter(
+            locataire=request.user,
+            is_active=True
+        ).select_related('property', 'proprietaire').annotate(
+            unread_count=Count('messages', filter=Q(messages__is_read=False) & ~Q(messages__sender=request.user))
+        )
+    else:
+        conversations = Conversation.objects.filter(
+            proprietaire=request.user,
+            is_active=True
+        ).select_related('property', 'locataire').annotate(
+            unread_count=Count('messages', filter=Q(messages__is_read=False) & ~Q(messages__sender=request.user))
+        )
+    
+    conversations = conversations.order_by('-updated_at')
+    
+    return render(request, 'rental/conversations.html', {'conversations': conversations})
+
+
+@login_required
+def conversation_detail_view(request, conversation_id):
+    """
+    Single conversation with messages
+    """
+    conversation = get_object_or_404(
+        Conversation.objects.select_related('property', 'locataire', 'proprietaire'),
+        id=conversation_id
+    )
+    
+    # Check permission
+    if request.user not in [conversation.locataire, conversation.proprietaire]:
+        messages.error(request, _('Access denied.'))
+        return redirect('conversations')
+    
+    # Mark messages as read
+    unread_messages = conversation.messages.filter(is_read=False).exclude(sender=request.user)
+    for message in unread_messages:
+        message.mark_as_read()
+    
+    # Get all messages
+    messages_list = conversation.messages.select_related('sender').order_by('created_at')
+    
+    # Handle new message
+    if request.method == 'POST':
+        form = MessageForm(request.POST)
+        if form.is_valid():
+            message = form.save(commit=False)
+            message.conversation = conversation
+            message.sender = request.user
+            message.save()
+            
+            # Update conversation timestamp
+            conversation.updated_at = timezone.now()
+            conversation.save()
+            
+            return redirect('conversation_detail', conversation_id=conversation.id)
+    else:
+        form = MessageForm()
+    
+    context = {
+        'conversation': conversation,
+        'messages': messages_list,
+        'form': form,
+    }
+    
+    return render(request, 'rental/conversation_detail.html', context)
+
+
+@login_required
+def start_conversation_view(request, property_id):
+    """
+    Start a new conversation about a property
+    """
+    property_obj = get_object_or_404(Property, id=property_id)
+    
+    if request.user.account_type != 'locataire':
+        messages.error(request, _('Only users can contact property owners.'))
+        return redirect('property_detail', property_id=property_id)
+    
+    if request.user == property_obj.owner:
+        messages.error(request, _('You cannot contact yourself.'))
+        return redirect('property_detail', property_id=property_id)
+    
+    # Get or create conversation
+    conversation, created = Conversation.objects.get_or_create(
+        property=property_obj,
+        locataire=request.user,
+        proprietaire=property_obj.owner
+    )
+    
+    if created:
+        messages.success(request, _('Conversation started! Send your first message.'))
+    
+    return redirect('conversation_detail', conversation_id=conversation.id)
+
+
+# ============================================
+# REPORTING VIEWS
+# ============================================
+@login_required
+def report_property_view(request, property_id):
+    """
+    Report a property listing
+    """
+    property_obj = get_object_or_404(Property, id=property_id)
+    
+    if request.method == 'POST':
+        form = PropertyReportForm(request.POST)
+        if form.is_valid():
+            report = form.save(commit=False)
+            report.property = property_obj
+            report.reporter = request.user
+            report.save()
+            
+            # Increment report count
+            property_obj.report_count += 1
+            property_obj.is_reported = True
+            property_obj.save()
+            
+            messages.success(request, _('Report submitted successfully. Our team will review it.'))
+            return redirect('property_detail', property_id=property_id)
+    else:
+        form = PropertyReportForm()
+    
+    context = {
+        'form': form,
+        'property': property_obj,
+    }
+    
+    return render(request, 'rental/report_property.html', context)
+
+
+# ============================================
+# PROFILE VIEWS
+# ============================================
+@login_required
+def profile_view(request):
+    """
+    User profile page
+    """
+    if request.method == 'POST':
+        form = UserProfileForm(request.POST, request.FILES, instance=request.user)
+        if form.is_valid():
+            form.save()
+            messages.success(request, _('Profile updated successfully!'))
+            return redirect('profile')
+    else:
+        form = UserProfileForm(instance=request.user)
+    
+    return render(request, 'rental/profile.html', {'form': form})
+
+
+# ============================================
+# AJAX HELPER VIEWS
+# ============================================
+@require_POST
+def get_cities_ajax(request):
+    """
+    Get cities for a department (AJAX)
+    """
+    department_id = request.POST.get('department_id')
+    
+    if department_id:
+        cities = City.objects.filter(department_id=department_id).values('id', 'name_en', 'name_fr')
+        return JsonResponse({'cities': list(cities)})
+    
+    return JsonResponse({'cities': []})

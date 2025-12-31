@@ -1,0 +1,438 @@
+from django.contrib import admin
+from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
+from django.utils.translation import gettext_lazy as _
+from django.utils.html import format_html
+from django.urls import reverse
+from django.db.models import Count, Q
+from .models import (
+    User, Department, City, Property, PropertyImage,
+    Wishlist, Conversation, Message, PropertyReport, SiteSettings
+)
+
+
+# ============================================
+# CUSTOM USER ADMIN
+# ============================================
+@admin.register(User)
+class UserAdmin(BaseUserAdmin):
+    """
+    Custom admin for User model with account type filtering
+    """
+    list_display = [
+        'username', 'email', 'account_type', 'age', 
+        'is_verified', 'is_suspended', 'created_at'
+    ]
+    
+    list_filter = [
+        'account_type', 'is_verified', 'is_suspended',
+        'preferred_language', 'is_staff', 'is_active'
+    ]
+    
+    search_fields = ['username', 'email', 'first_name', 'last_name', 'phone_number']
+    
+    fieldsets = (
+        (None, {'fields': ('username', 'password')}),
+        (_('Personal Info'), {
+            'fields': ('first_name', 'last_name', 'email', 'age', 'profile_picture')
+        }),
+        (_('Account Information'), {
+            'fields': (
+                'account_type', 'phone_number', 'whatsapp_number',
+                'preferred_language', 'is_verified'
+            )
+        }),
+        (_('Moderation'), {
+            'fields': ('is_suspended', 'suspension_reason'),
+            'classes': ('collapse',)
+        }),
+        (_('Permissions'), {
+            'fields': ('is_active', 'is_staff', 'is_superuser', 'groups', 'user_permissions'),
+            'classes': ('collapse',)
+        }),
+        (_('Important dates'), {
+            'fields': ('last_login', 'date_joined', 'created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    readonly_fields = ['created_at', 'updated_at', 'last_login', 'date_joined']
+    
+    actions = ['verify_owners', 'suspend_users', 'unsuspend_users']
+    
+    def verify_owners(self, request, queryset):
+        """Verify selected property owners"""
+        count = queryset.filter(account_type='proprietaire').update(is_verified=True)
+        self.message_user(request, f'{count} owner(s) verified successfully.')
+    verify_owners.short_description = _('Verify selected owners')
+    
+    def suspend_users(self, request, queryset):
+        """Suspend selected users"""
+        count = queryset.update(is_suspended=True)
+        self.message_user(request, f'{count} user(s) suspended.')
+    suspend_users.short_description = _('Suspend selected users')
+    
+    def unsuspend_users(self, request, queryset):
+        """Unsuspend selected users"""
+        count = queryset.update(is_suspended=False, suspension_reason='')
+        self.message_user(request, f'{count} user(s) unsuspended.')
+    unsuspend_users.short_description = _('Unsuspend selected users')
+
+
+# ============================================
+# LOCATION ADMIN
+# ============================================
+@admin.register(Department)
+class DepartmentAdmin(admin.ModelAdmin):
+    """
+    Admin for Haiti departments
+    """
+    list_display = ['name_en', 'name_fr', 'slug', 'city_count', 'property_count']
+    search_fields = ['name_en', 'name_fr']
+    prepopulated_fields = {'slug': ('name_en',)}
+    
+    def city_count(self, obj):
+        return obj.cities.count()
+    city_count.short_description = _('Cities')
+    
+    def property_count(self, obj):
+        return obj.properties.count()
+    property_count.short_description = _('Properties')
+
+
+class CityInline(admin.TabularInline):
+    """
+    Inline admin for cities within department
+    """
+    model = City
+    extra = 1
+    prepopulated_fields = {'slug': ('name_en',)}
+
+
+@admin.register(City)
+class CityAdmin(admin.ModelAdmin):
+    """
+    Admin for cities
+    """
+    list_display = ['name_en', 'name_fr', 'department', 'property_count']
+    list_filter = ['department']
+    search_fields = ['name_en', 'name_fr']
+    prepopulated_fields = {'slug': ('name_en',)}
+    
+    def property_count(self, obj):
+        return obj.properties.count()
+    property_count.short_description = _('Properties')
+
+
+# ============================================
+# PROPERTY ADMIN
+# ============================================
+class PropertyImageInline(admin.TabularInline):
+    """
+    Inline admin for property images
+    """
+    model = PropertyImage
+    extra = 3
+    fields = ['image', 'caption', 'is_primary', 'order']
+    readonly_fields = ['uploaded_at']
+
+
+@admin.register(Property)
+class PropertyAdmin(admin.ModelAdmin):
+    """
+    Comprehensive admin for property listings
+    """
+    list_display = [
+        'title', 'owner_link', 'property_type', 'price',
+        'location_display', 'availability_status',
+        'is_approved', 'is_reported', 'view_count', 'created_at'
+    ]
+    
+    list_filter = [
+        'property_type', 'availability_status', 'is_approved',
+        'is_reported', 'department', 'created_at'
+    ]
+    
+    search_fields = [
+        'title', 'description', 'address',
+        'owner__username', 'owner__email'
+    ]
+    
+    readonly_fields = [
+        'view_count', 'report_count', 'created_at', 'updated_at',
+        'wishlist_count', 'conversation_count'
+    ]
+    
+    fieldsets = (
+        (_('Basic Information'), {
+            'fields': ('owner', 'title', 'property_type', 'description')
+        }),
+        (_('Location'), {
+            'fields': ('department', 'city', 'address')
+        }),
+        (_('Property Details'), {
+            'fields': ('price', 'bedrooms', 'bathrooms', 'area_sqm')
+        }),
+        (_('Status'), {
+            'fields': ('availability_status', 'is_approved', 'is_reported', 'report_count')
+        }),
+        (_('Metrics'), {
+            'fields': ('view_count', 'wishlist_count', 'conversation_count'),
+            'classes': ('collapse',)
+        }),
+        (_('Timestamps'), {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    inlines = [PropertyImageInline]
+    
+    actions = ['approve_properties', 'mark_as_rented', 'mark_as_available']
+    
+    def owner_link(self, obj):
+        """Link to owner's admin page"""
+        url = reverse('admin:your_app_user_change', args=[obj.owner.id])
+        return format_html('<a href="{}">{}</a>', url, obj.owner.username)
+    owner_link.short_description = _('Owner')
+    
+    def location_display(self, obj):
+        """Display city and department"""
+        return f"{obj.city.name_en}, {obj.department.name_en}"
+    location_display.short_description = _('Location')
+    
+    def wishlist_count(self, obj):
+        """Count of users who saved this property"""
+        return obj.wishlisted_by.count()
+    wishlist_count.short_description = _('Saved by')
+    
+    def conversation_count(self, obj):
+        """Count of conversations about this property"""
+        return obj.conversations.count()
+    conversation_count.short_description = _('Conversations')
+    
+    def approve_properties(self, request, queryset):
+        """Approve selected properties"""
+        count = queryset.update(is_approved=True)
+        self.message_user(request, f'{count} property(ies) approved.')
+    approve_properties.short_description = _('Approve selected properties')
+    
+    def mark_as_rented(self, request, queryset):
+        """Mark properties as rented"""
+        count = queryset.update(availability_status='rented')
+        self.message_user(request, f'{count} property(ies) marked as rented.')
+    mark_as_rented.short_description = _('Mark as rented')
+    
+    def mark_as_available(self, request, queryset):
+        """Mark properties as available"""
+        count = queryset.update(availability_status='available')
+        self.message_user(request, f'{count} property(ies) marked as available.')
+    mark_as_available.short_description = _('Mark as available')
+
+
+@admin.register(PropertyImage)
+class PropertyImageAdmin(admin.ModelAdmin):
+    """
+    Admin for individual property images
+    """
+    list_display = ['property', 'caption', 'is_primary', 'order', 'uploaded_at']
+    list_filter = ['is_primary', 'uploaded_at']
+    search_fields = ['property__title', 'caption']
+    list_editable = ['is_primary', 'order']
+
+
+# ============================================
+# WISHLIST ADMIN
+# ============================================
+@admin.register(Wishlist)
+class WishlistAdmin(admin.ModelAdmin):
+    """
+    Admin for user wishlists
+    """
+    list_display = ['user', 'property', 'added_at']
+    list_filter = ['added_at']
+    search_fields = ['user__username', 'property__title']
+    readonly_fields = ['added_at']
+    
+    def has_add_permission(self, request):
+        """Prevent manual addition via admin"""
+        return False
+
+
+# ============================================
+# MESSAGING ADMIN
+# ============================================
+class MessageInline(admin.TabularInline):
+    """
+    Inline messages within conversation
+    """
+    model = Message
+    extra = 0
+    readonly_fields = ['sender', 'content', 'is_read', 'created_at']
+    can_delete = False
+    
+    def has_add_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(Conversation)
+class ConversationAdmin(admin.ModelAdmin):
+    """
+    Admin for conversations (read-only for moderation)
+    """
+    list_display = [
+        'property', 'locataire', 'proprietaire',
+        'message_count', 'is_active', 'created_at', 'updated_at'
+    ]
+    
+    list_filter = ['is_active', 'created_at']
+    search_fields = [
+        'property__title',
+        'locataire__username',
+        'proprietaire__username'
+    ]
+    
+    readonly_fields = ['property', 'locataire', 'proprietaire', 'created_at', 'updated_at']
+    
+    inlines = [MessageInline]
+    
+    def message_count(self, obj):
+        return obj.messages.count()
+    message_count.short_description = _('Messages')
+    
+    def has_add_permission(self, request):
+        """Prevent manual creation"""
+        return False
+
+
+@admin.register(Message)
+class MessageAdmin(admin.ModelAdmin):
+    """
+    Admin for individual messages (read-only for moderation)
+    """
+    list_display = ['conversation', 'sender', 'preview', 'is_read', 'created_at']
+    list_filter = ['is_read', 'created_at']
+    search_fields = ['content', 'sender__username']
+    readonly_fields = ['conversation', 'sender', 'content', 'is_read', 'read_at', 'created_at']
+    
+    def preview(self, obj):
+        """Show message preview"""
+        return obj.content[:50] + '...' if len(obj.content) > 50 else obj.content
+    preview.short_description = _('Preview')
+    
+    def has_add_permission(self, request):
+        return False
+    
+    def has_delete_permission(self, request, obj=None):
+        """Only allow deletion of inappropriate content"""
+        return request.user.is_superuser
+
+
+# ============================================
+# REPORTING ADMIN
+# ============================================
+@admin.register(PropertyReport)
+class PropertyReportAdmin(admin.ModelAdmin):
+    """
+    Admin for property reports
+    """
+    list_display = [
+        'property_link', 'reporter', 'reason',
+        'status', 'created_at', 'reviewed_at'
+    ]
+    
+    list_filter = ['reason', 'status', 'created_at']
+    
+    search_fields = [
+        'property__title',
+        'reporter__username',
+        'description',
+        'admin_notes'
+    ]
+    
+    readonly_fields = ['property', 'reporter', 'reason', 'description', 'created_at']
+    
+    fieldsets = (
+        (_('Report Information'), {
+            'fields': ('property', 'reporter', 'reason', 'description')
+        }),
+        (_('Admin Review'), {
+            'fields': ('status', 'admin_notes', 'reviewed_at')
+        }),
+        (_('Timestamps'), {
+            'fields': ('created_at',),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    actions = ['mark_as_reviewed', 'mark_action_taken', 'dismiss_reports']
+    
+    def property_link(self, obj):
+        """Link to property admin page"""
+        url = reverse('admin:your_app_property_change', args=[obj.property.id])
+        return format_html('<a href="{}">{}</a>', url, obj.property.title)
+    property_link.short_description = _('Property')
+    
+    def mark_as_reviewed(self, request, queryset):
+        """Mark reports as reviewed"""
+        from django.utils import timezone
+        count = queryset.update(status='reviewed', reviewed_at=timezone.now())
+        self.message_user(request, f'{count} report(s) marked as reviewed.')
+    mark_as_reviewed.short_description = _('Mark as reviewed')
+    
+    def mark_action_taken(self, request, queryset):
+        """Mark action taken on reports"""
+        from django.utils import timezone
+        count = queryset.update(status='action_taken', reviewed_at=timezone.now())
+        self.message_user(request, f'{count} report(s) marked with action taken.')
+    mark_action_taken.short_description = _('Mark action taken')
+    
+    def dismiss_reports(self, request, queryset):
+        """Dismiss reports"""
+        from django.utils import timezone
+        count = queryset.update(status='dismissed', reviewed_at=timezone.now())
+        self.message_user(request, f'{count} report(s) dismissed.')
+    dismiss_reports.short_description = _('Dismiss reports')
+
+
+# ============================================
+# SITE SETTINGS ADMIN
+# ============================================
+@admin.register(SiteSettings)
+class SiteSettingsAdmin(admin.ModelAdmin):
+    """
+    Admin for global site settings (singleton)
+    """
+    fieldsets = (
+        (_('Basic Information'), {
+            'fields': ('site_name', 'contact_email', 'contact_phone')
+        }),
+        (_('Disclaimers'), {
+            'fields': ('disclaimer_en', 'disclaimer_fr')
+        }),
+        (_('Legal Documents'), {
+            'fields': ('terms_and_conditions', 'privacy_policy'),
+            'classes': ('collapse',)
+        }),
+        (_('System'), {
+            'fields': ('maintenance_mode', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    readonly_fields = ['updated_at']
+    
+    def has_add_permission(self, request):
+        """Only one instance allowed"""
+        return not SiteSettings.objects.exists()
+    
+    def has_delete_permission(self, request, obj=None):
+        """Cannot delete site settings"""
+        return False
+
+
+# ============================================
+# ADMIN DASHBOARD CUSTOMIZATION
+# ============================================
+admin.site.site_header = _('AyitiCaney Administration')
+admin.site.site_title = _('AyitiCaney Admin')
+admin.site.index_title = _('Welcome to AyitiCaney Administration Panel')

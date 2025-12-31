@@ -1,0 +1,523 @@
+from django import forms
+from django.contrib.auth.forms import UserCreationForm
+from django.core.exceptions import ValidationError
+from django.utils.translation import gettext_lazy as _
+from django.forms import inlineformset_factory
+
+from .models import (
+    User, Property, PropertyImage, Message, PropertyReport
+)
+
+
+# ============================================
+# USER REGISTRATION & PROFILE FORMS
+# ============================================
+class UserRegistrationForm(UserCreationForm):
+    """
+    Custom registration form with age validation and account type
+    """
+    
+    email = forms.EmailField(
+        required=True,
+        widget=forms.EmailInput(attrs={
+            'class': 'form-control',
+            'placeholder': _('Email address')
+        })
+    )
+    
+    first_name = forms.CharField(
+        max_length=150,
+        required=True,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': _('First name')
+        })
+    )
+    
+    last_name = forms.CharField(
+        max_length=150,
+        required=True,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': _('Last name')
+        })
+    )
+    
+    age = forms.IntegerField(
+        min_value=14,
+        max_value=200,
+        required=True,
+        widget=forms.NumberInput(attrs={
+            'class': 'form-control',
+            'placeholder': _('Age (14-200 years)')
+        }),
+        help_text=_('You must be between 14 and 200 years old to register.')
+    )
+    
+    account_type = forms.ChoiceField(
+        choices=User.ACCOUNT_TYPE_CHOICES,
+        required=True,
+        widget=forms.RadioSelect(attrs={
+            'class': 'form-check-input'
+        }),
+        label=_('Account Type'),
+        help_text=_('Choose whether you are looking for a house (User) or listing properties (Owner)')
+    )
+    
+    phone_number = forms.CharField(
+        max_length=20,
+        required=False,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': _('Phone number')
+        })
+    )
+    
+    whatsapp_number = forms.CharField(
+        max_length=20,
+        required=False,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': _('WhatsApp number (optional)')
+        }),
+        help_text=_('This will be shown to interested users')
+    )
+    
+    preferred_language = forms.ChoiceField(
+        choices=User.LANGUAGE_CHOICES,
+        initial='fr',
+        widget=forms.Select(attrs={
+            'class': 'form-control'
+        })
+    )
+    
+    terms_accepted = forms.BooleanField(
+        required=True,
+        widget=forms.CheckboxInput(attrs={
+            'class': 'form-check-input'
+        }),
+        label=_('I accept the Terms and Conditions')
+    )
+    
+    class Meta:
+        model = User
+        fields = [
+            'username', 'email', 'first_name', 'last_name',
+            'age', 'account_type', 'phone_number', 'whatsapp_number',
+            'preferred_language', 'password1', 'password2'
+        ]
+        widgets = {
+            'username': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': _('Username')
+            }),
+        }
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['password1'].widget.attrs.update({
+            'class': 'form-control',
+            'placeholder': _('Password')
+        })
+        self.fields['password2'].widget.attrs.update({
+            'class': 'form-control',
+            'placeholder': _('Confirm password')
+        })
+    
+    def clean_age(self):
+        """Validate age is between 14 and 200"""
+        age = self.cleaned_data.get('age')
+        if age < 14 or age > 200:
+            raise ValidationError(
+                _('Age must be between 14 and 200 years old.')
+            )
+        return age
+    
+    def clean_email(self):
+        """Ensure email is unique"""
+        email = self.cleaned_data.get('email')
+        if User.objects.filter(email=email).exists():
+            raise ValidationError(
+                _('This email address is already registered.')
+            )
+        return email
+
+
+class UserProfileForm(forms.ModelForm):
+    """
+    Form for editing user profile
+    """
+    
+    class Meta:
+        model = User
+        fields = [
+            'first_name', 'last_name', 'email', 'phone_number',
+            'whatsapp_number', 'profile_picture', 'preferred_language'
+        ]
+        widgets = {
+            'first_name': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': _('First name')
+            }),
+            'last_name': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': _('Last name')
+            }),
+            'email': forms.EmailInput(attrs={
+                'class': 'form-control',
+                'placeholder': _('Email address')
+            }),
+            'phone_number': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': _('Phone number')
+            }),
+            'whatsapp_number': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': _('WhatsApp number')
+            }),
+            'profile_picture': forms.FileInput(attrs={
+                'class': 'form-control',
+                'accept': 'image/*'
+            }),
+            'preferred_language': forms.Select(attrs={
+                'class': 'form-control'
+            }),
+        }
+
+
+# ============================================
+# PROPERTY FORMS
+# ============================================
+class PropertyForm(forms.ModelForm):
+    """
+    Form for creating and editing property listings
+    """
+    
+    class Meta:
+        model = Property
+        fields = [
+            'title', 'property_type', 'description', 'price',
+            'department', 'city', 'address',
+            'bedrooms', 'bathrooms', 'area_sqm',
+            'availability_status'
+        ]
+        widgets = {
+            'title': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': _('e.g., Beautiful 2-bedroom apartment in Pétion-Ville')
+            }),
+            'property_type': forms.Select(attrs={
+                'class': 'form-control'
+            }),
+            'description': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 6,
+                'placeholder': _('Describe your property in detail...')
+            }),
+            'price': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'placeholder': _('Monthly rent in HTG'),
+                'step': '0.01'
+            }),
+            'department': forms.Select(attrs={
+                'class': 'form-control',
+                'id': 'id_department'
+            }),
+            'city': forms.Select(attrs={
+                'class': 'form-control',
+                'id': 'id_city'
+            }),
+            'address': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': _('Street address or neighborhood')
+            }),
+            'bedrooms': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'min': '0'
+            }),
+            'bathrooms': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'min': '0'
+            }),
+            'area_sqm': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'placeholder': _('Area in square meters'),
+                'step': '0.01'
+            }),
+            'availability_status': forms.Select(attrs={
+                'class': 'form-control'
+            }),
+        }
+        labels = {
+            'title': _('Property Title'),
+            'property_type': _('Property Type'),
+            'description': _('Description'),
+            'price': _('Monthly Rent (HTG)'),
+            'department': _('Department'),
+            'city': _('City/Commune'),
+            'address': _('Address'),
+            'bedrooms': _('Bedrooms'),
+            'bathrooms': _('Bathrooms'),
+            'area_sqm': _('Area (m²)'),
+            'availability_status': _('Availability'),
+        }
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+        # If editing, filter cities by department
+        if self.instance.pk and self.instance.department:
+            self.fields['city'].queryset = self.instance.department.cities.all()
+        else:
+            self.fields['city'].queryset = self.fields['city'].queryset.none()
+        
+        # If this is for creation via POST and department is selected
+        if 'department' in self.data:
+            try:
+                department_id = int(self.data.get('department'))
+                self.fields['city'].queryset = City.objects.filter(
+                    department_id=department_id
+                ).order_by('name_en')
+            except (ValueError, TypeError):
+                pass
+
+
+class PropertyImageForm(forms.ModelForm):
+    """
+    Form for individual property images
+    """
+    
+    class Meta:
+        model = PropertyImage
+        fields = ['image', 'caption', 'is_primary', 'order']
+        widgets = {
+            'image': forms.FileInput(attrs={
+                'class': 'form-control',
+                'accept': 'image/*'
+            }),
+            'caption': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': _('Image caption (optional)')
+            }),
+            'is_primary': forms.CheckboxInput(attrs={
+                'class': 'form-check-input'
+            }),
+            'order': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'min': '0'
+            }),
+        }
+
+
+# Create formset for multiple images
+PropertyImageFormSet = inlineformset_factory(
+    Property,
+    PropertyImage,
+    form=PropertyImageForm,
+    extra=5,
+    max_num=10,
+    can_delete=True,
+    validate_max=True
+)
+
+
+# ============================================
+# SEARCH & FILTER FORMS
+# ============================================
+class PropertySearchForm(forms.Form):
+    """
+    Advanced property search form
+    """
+    
+    q = forms.CharField(
+        required=False,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': _('Search by title, location, description...')
+        }),
+        label=_('Search')
+    )
+    
+    department = forms.ModelChoiceField(
+        queryset=Department.objects.all(),
+        required=False,
+        empty_label=_('All Departments'),
+        widget=forms.Select(attrs={
+            'class': 'form-control'
+        })
+    )
+    
+    city = forms.ModelChoiceField(
+        queryset=City.objects.all(),
+        required=False,
+        empty_label=_('All Cities'),
+        widget=forms.Select(attrs={
+            'class': 'form-control'
+        })
+    )
+    
+    property_type = forms.ChoiceField(
+        choices=[('', _('All Types'))] + Property.PROPERTY_TYPE_CHOICES,
+        required=False,
+        widget=forms.Select(attrs={
+            'class': 'form-control'
+        })
+    )
+    
+    min_price = forms.DecimalField(
+        required=False,
+        widget=forms.NumberInput(attrs={
+            'class': 'form-control',
+            'placeholder': _('Min price (HTG)')
+        }),
+        label=_('Minimum Price')
+    )
+    
+    max_price = forms.DecimalField(
+        required=False,
+        widget=forms.NumberInput(attrs={
+            'class': 'form-control',
+            'placeholder': _('Max price (HTG)')
+        }),
+        label=_('Maximum Price')
+    )
+    
+    availability = forms.ChoiceField(
+        choices=[('', _('All'))] + Property.AVAILABILITY_STATUS,
+        required=False,
+        widget=forms.Select(attrs={
+            'class': 'form-control'
+        }),
+        label=_('Availability')
+    )
+    
+    order_by = forms.ChoiceField(
+        choices=[
+            ('-created_at', _('Newest First')),
+            ('created_at', _('Oldest First')),
+            ('price', _('Price: Low to High')),
+            ('-price', _('Price: High to Low')),
+        ],
+        required=False,
+        initial='-created_at',
+        widget=forms.Select(attrs={
+            'class': 'form-control'
+        }),
+        label=_('Sort By')
+    )
+
+
+# ============================================
+# MESSAGING FORMS
+# ============================================
+class MessageForm(forms.ModelForm):
+    """
+    Form for sending messages in conversations
+    """
+    
+    class Meta:
+        model = Message
+        fields = ['content']
+        widgets = {
+            'content': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 4,
+                'placeholder': _('Type your message here...'),
+                'required': True
+            })
+        }
+        labels = {
+            'content': ''
+        }
+    
+    def clean_content(self):
+        """Validate message is not empty"""
+        content = self.cleaned_data.get('content', '').strip()
+        if not content:
+            raise ValidationError(_('Message cannot be empty.'))
+        return content
+
+
+# ============================================
+# REPORTING FORM
+# ============================================
+class PropertyReportForm(forms.ModelForm):
+    """
+    Form for reporting suspicious or inappropriate listings
+    """
+    
+    class Meta:
+        model = PropertyReport
+        fields = ['reason', 'description']
+        widgets = {
+            'reason': forms.Select(attrs={
+                'class': 'form-control'
+            }),
+            'description': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 5,
+                'placeholder': _('Please provide details about why you are reporting this listing...')
+            })
+        }
+        labels = {
+            'reason': _('Reason for Report'),
+            'description': _('Details')
+        }
+    
+    def clean_description(self):
+        """Ensure description is provided"""
+        description = self.cleaned_data.get('description', '').strip()
+        if len(description) < 10:
+            raise ValidationError(
+                _('Please provide at least 10 characters describing the issue.')
+            )
+        return description
+
+
+# ============================================
+# CONTACT FORM
+# ============================================
+class ContactForm(forms.Form):
+    """
+    Contact form for general inquiries
+    """
+    
+    name = forms.CharField(
+        max_length=100,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': _('Your name')
+        })
+    )
+    
+    email = forms.EmailField(
+        widget=forms.EmailInput(attrs={
+            'class': 'form-control',
+            'placeholder': _('Your email address')
+        })
+    )
+    
+    subject = forms.CharField(
+        max_length=200,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': _('Subject')
+        })
+    )
+    
+    message = forms.CharField(
+        widget=forms.Textarea(attrs={
+            'class': 'form-control',
+            'rows': 6,
+            'placeholder': _('Your message...')
+        })
+    )
+    
+    def clean_message(self):
+        """Validate message length"""
+        message = self.cleaned_data.get('message', '').strip()
+        if len(message) < 20:
+            raise ValidationError(
+                _('Message must be at least 20 characters long.')
+            )
+        return message

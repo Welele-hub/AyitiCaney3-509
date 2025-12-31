@@ -1,3 +1,4 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="{% if request.user.is_authenticated %}{{ request.user.preferred_language }}{% else %}fr{% endif %}">
 <head>
@@ -6,180 +7,28 @@
     <meta name="description" content="AyitiCaney - Professional House Rental Platform for Haiti">
     <title>{% block title %}AyitiCaney - Find Your Perfect Home in Haiti{% endblock %}</title>
     
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="{% static 'rental/images/favicon.png' %}">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
     <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     
     <!-- Bootstrap Icons -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
     
     <!-- Custom CSS -->
-    <style>
-        :root {
-            --primary-blue: #1e3a8a;
-            --secondary-blue: #3b82f6;
-            --accent-green: #10b981;
-            --accent-earth: #d97706;
-            --light-gray: #f3f4f6;
-            --dark-gray: #374151;
-        }
-        
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            color: var(--dark-gray);
-        }
-        
-        /* Navbar Styles */
-        .navbar-custom {
-            background: linear-gradient(135deg, var(--primary-blue) 0%, var(--secondary-blue) 100%);
-            padding: 1rem 0;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        
-        .navbar-custom .navbar-brand {
-            font-size: 1.8rem;
-            font-weight: bold;
-            color: white !important;
-        }
-        
-        .navbar-custom .nav-link {
-            color: rgba(255, 255, 255, 0.9) !important;
-            margin: 0 0.5rem;
-            transition: all 0.3s;
-        }
-        
-        .navbar-custom .nav-link:hover {
-            color: white !important;
-            transform: translateY(-2px);
-        }
-        
-        .btn-primary {
-            background-color: var(--primary-blue);
-            border-color: var(--primary-blue);
-        }
-        
-        .btn-primary:hover {
-            background-color: var(--secondary-blue);
-            border-color: var(--secondary-blue);
-        }
-        
-        .btn-success {
-            background-color: var(--accent-green);
-            border-color: var(--accent-green);
-        }
-        
-        /* Card Styles */
-        .property-card {
-            transition: transform 0.3s, box-shadow 0.3s;
-            border: none;
-            border-radius: 12px;
-            overflow: hidden;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        }
-        
-        .property-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 8px 20px rgba(0,0,0,0.15);
-        }
-        
-        .property-card img {
-            height: 200px;
-            object-fit: cover;
-        }
-        
-        /* Footer */
-        footer {
-            background-color: var(--primary-blue);
-            color: white;
-            padding: 2rem 0;
-            margin-top: 4rem;
-        }
-        
-        footer a {
-            color: rgba(255, 255, 255, 0.8);
-            text-decoration: none;
-        }
-        
-        footer a:hover {
-            color: white;
-        }
-        
-        /* Badge Styles */
-        .badge-verified {
-            background-color: var(--accent-green);
-        }
-        
-        /* Messages */
-        .alert {
-            border-radius: 8px;
-        }
-        
-        /* Hero Section */
-        .hero-section {
-            background: linear-gradient(135deg, var(--primary-blue) 0%, var(--secondary-blue) 100%);
-            color: white;
-            padding: 4rem 0;
-            margin-bottom: 3rem;
-        }
-        
-        .hero-section h1 {
-            font-size: 3rem;
-            font-weight: bold;
-            margin-bottom: 1rem;
-        }
-        
-        /* Stats Section */
-        .stats-card {
-            background: white;
-            border-radius: 12px;
-            padding: 2rem;
-            text-align: center;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        }
-        
-        .stats-card .stats-number {
-            font-size: 2.5rem;
-            font-weight: bold;
-            color: var(--primary-blue);
-        }
-        
-        .stats-card .stats-label {
-            color: var(--dark-gray);
-            margin-top: 0.5rem;
-        }
-        
-        /* Language Switcher */
-        .language-switcher {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-        
-        .language-switcher button {
-            background: none;
-            border: 1px solid rgba(255,255,255,0.3);
-            color: white;
-            padding: 0.25rem 0.75rem;
-            border-radius: 4px;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-        
-        .language-switcher button:hover {
-            background: rgba(255,255,255,0.2);
-            border-color: white;
-        }
-        
-        .language-switcher button.active {
-            background: white;
-            color: var(--primary-blue);
-        }
-    </style>
+    <link rel="stylesheet" href="{% static 'rental/css/styles.css' %}">
     
     {% block extra_css %}{% endblock %}
 </head>
 <body>
     <!-- Navigation -->
-    <nav class="navbar navbar-expand-lg navbar-dark navbar-custom">
+    <nav class="navbar navbar-expand-lg navbar-custom">
         <div class="container">
             <a class="navbar-brand" href="{% url 'home' %}">
                 <i class="bi bi-house-heart-fill"></i> AyitiCaney
@@ -192,22 +41,22 @@
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto align-items-center">
                     <li class="nav-item">
-                        <a class="nav-link" href="{% url 'home' %}">
-                            <i class="bi bi-house"></i> Home
+                        <a class="nav-link {% if request.resolver_match.url_name == 'home' %}active{% endif %}" href="{% url 'home' %}">
+                            <i class="bi bi-house-door"></i> Accueil
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{% url 'search_properties' %}">
-                            <i class="bi bi-search"></i> Search Houses
+                        <a class="nav-link {% if request.resolver_match.url_name == 'search_properties' %}active{% endif %}" href="{% url 'search_properties' %}">
+                            <i class="bi bi-search"></i> Chercher Maisons
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{% url 'about' %}">
-                            <i class="bi bi-info-circle"></i> About
+                        <a class="nav-link {% if request.resolver_match.url_name == 'about' %}active{% endif %}" href="{% url 'about' %}">
+                            <i class="bi bi-info-circle"></i> À Propos
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{% url 'contact' %}">
+                        <a class="nav-link {% if request.resolver_match.url_name == 'contact' %}active{% endif %}" href="{% url 'contact' %}">
                             <i class="bi bi-envelope"></i> Contact
                         </a>
                     </li>
@@ -220,36 +69,47 @@
                                     <i class="bi bi-speedometer2"></i> Dashboard
                                 </a>
                             </li>
-                            <li class="nav-item">
-                                <a class="nav-link btn btn-success text-white px-3" href="{% url 'create_property' %}">
+                            <li class="nav-item ms-2">
+                                <a class="btn btn-coral btn-sm" href="{% url 'create_property' %}">
                                     <i class="bi bi-plus-circle"></i> List Property
                                 </a>
                             </li>
                         {% else %}
                             <li class="nav-item">
                                 <a class="nav-link" href="{% url 'user_dashboard' %}">
-                                    <i class="bi bi-heart"></i> Saved Houses
+                                    <i class="bi bi-heart"></i> Mes Favoris
                                 </a>
                             </li>
                         {% endif %}
                         
                         <li class="nav-item">
-                            <a class="nav-link" href="{% url 'conversations' %}">
+                            <a class="nav-link position-relative" href="{% url 'conversations' %}">
                                 <i class="bi bi-chat-dots"></i> Messages
+                                {% if unread_message_count > 0 %}
+                                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                                    {{ unread_message_count }}
+                                </span>
+                                {% endif %}
                             </a>
                         </li>
                         
                         <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
-                                <i class="bi bi-person-circle"></i> {{ user.username }}
+                            <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" role="button" data-bs-toggle="dropdown">
+                                {% if user.profile_picture %}
+                                    <img src="{{ user.profile_picture.url }}" alt="{{ user.username }}" 
+                                         class="rounded-circle me-2" style="width: 32px; height: 32px; object-fit: cover;">
+                                {% else %}
+                                    <i class="bi bi-person-circle fs-4 me-1"></i>
+                                {% endif %}
+                                {{ user.first_name|default:user.username }}
                             </a>
-                            <ul class="dropdown-menu">
+                            <ul class="dropdown-menu dropdown-menu-end">
                                 <li><a class="dropdown-item" href="{% url 'profile' %}">
-                                    <i class="bi bi-person"></i> Profile
+                                    <i class="bi bi-person"></i> Mon Profil
                                 </a></li>
                                 <li><hr class="dropdown-divider"></li>
-                                <li><a class="dropdown-item" href="{% url 'logout' %}">
-                                    <i class="bi bi-box-arrow-right"></i> Logout
+                                <li><a class="dropdown-item text-danger" href="{% url 'logout' %}">
+                                    <i class="bi bi-box-arrow-right"></i> Déconnexion
                                 </a></li>
                             </ul>
                         </li>
@@ -257,12 +117,12 @@
                         <!-- Guest Menu -->
                         <li class="nav-item">
                             <a class="nav-link" href="{% url 'login' %}">
-                                <i class="bi bi-box-arrow-in-right"></i> Login
+                                <i class="bi bi-box-arrow-in-right"></i> Connexion
                             </a>
                         </li>
-                        <li class="nav-item">
-                            <a class="nav-link btn btn-success text-white px-3" href="{% url 'register' %}">
-                                <i class="bi bi-person-plus"></i> Register
+                        <li class="nav-item ms-2">
+                            <a class="btn btn-primary btn-sm" href="{% url 'register' %}">
+                                <i class="bi bi-person-plus"></i> Inscription
                             </a>
                         </li>
                     {% endif %}
@@ -270,8 +130,14 @@
                     <!-- Language Switcher -->
                     <li class="nav-item ms-3">
                         <div class="language-switcher">
-                            <button onclick="changeLanguage('en')" {% if LANGUAGE_CODE == 'en' %}class="active"{% endif %}>EN</button>
-                            <button onclick="changeLanguage('fr')" {% if LANGUAGE_CODE == 'fr' %}class="active"{% endif %}>FR</button>
+                            <button data-lang="en" onclick="changeLanguage('en')" 
+                                    {% if LANGUAGE_CODE == 'en' %}class="active"{% endif %}>
+                                EN
+                            </button>
+                            <button data-lang="fr" onclick="changeLanguage('fr')" 
+                                    {% if LANGUAGE_CODE == 'fr' %}class="active"{% endif %}>
+                                FR
+                            </button>
                         </div>
                     </li>
                 </ul>
@@ -284,6 +150,15 @@
         <div class="container mt-3">
             {% for message in messages %}
                 <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                    {% if message.tags == 'success' %}
+                        <i class="bi bi-check-circle-fill me-2"></i>
+                    {% elif message.tags == 'error' or message.tags == 'danger' %}
+                        <i class="bi bi-x-circle-fill me-2"></i>
+                    {% elif message.tags == 'warning' %}
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    {% else %}
+                        <i class="bi bi-info-circle-fill me-2"></i>
+                    {% endif %}
                     {{ message }}
                     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                 </div>
@@ -299,102 +174,87 @@
     <!-- Footer -->
     <footer>
         <div class="container">
-            <div class="row">
-                <div class="col-md-4 mb-4">
-                    <h5><i class="bi bi-house-heart-fill"></i> AyitiCaney</h5>
-                    <p>Connecting property owners and renters across Haiti with trust and transparency.</p>
-                    <div class="mt-3">
-                        <a href="#" class="me-3"><i class="bi bi-facebook fs-4"></i></a>
-                        <a href="#" class="me-3"><i class="bi bi-instagram fs-4"></i></a>
-                        <a href="#" class="me-3"><i class="bi bi-twitter fs-4"></i></a>
+            <div class="row g-4">
+                <div class="col-lg-4 mb-4">
+                    <h5><i class="bi bi-house-heart-fill me-2"></i> AyitiCaney</h5>
+                    <p class="mb-3">Connecter les propriétaires et locataires à travers Haïti avec confiance et transparence.</p>
+                    <div class="social-links mt-3">
+                        <a href="#" data-bs-toggle="tooltip" title="Facebook">
+                            <i class="bi bi-facebook"></i>
+                        </a>
+                        <a href="#" data-bs-toggle="tooltip" title="Instagram">
+                            <i class="bi bi-instagram"></i>
+                        </a>
+                        <a href="#" data-bs-toggle="tooltip" title="Twitter">
+                            <i class="bi bi-twitter"></i>
+                        </a>
+                        <a href="#" data-bs-toggle="tooltip" title="WhatsApp">
+                            <i class="bi bi-whatsapp"></i>
+                        </a>
                     </div>
                 </div>
-                <div class="col-md-4 mb-4">
-                    <h5>Quick Links</h5>
+                
+                <div class="col-lg-2 col-md-4 mb-4">
+                    <h5>Liens Rapides</h5>
                     <ul class="list-unstyled">
-                        <li><a href="{% url 'home' %}">Home</a></li>
-                        <li><a href="{% url 'search_properties' %}">Search Properties</a></li>
-                        <li><a href="{% url 'about' %}">About Us</a></li>
+                        <li><a href="{% url 'home' %}">Accueil</a></li>
+                        <li><a href="{% url 'search_properties' %}">Chercher Maisons</a></li>
+                        <li><a href="{% url 'about' %}">À Propos</a></li>
                         <li><a href="{% url 'contact' %}">Contact</a></li>
                     </ul>
                 </div>
-                <div class="col-md-4 mb-4">
-                    <h5>Legal</h5>
+                
+                <div class="col-lg-3 col-md-4 mb-4">
+                    <h5>Pour Propriétaires</h5>
                     <ul class="list-unstyled">
-                        <li><a href="#">Terms & Conditions</a></li>
-                        <li><a href="#">Privacy Policy</a></li>
+                        {% if user.is_authenticated and user.account_type == 'proprietaire' %}
+                            <li><a href="{% url 'owner_dashboard' %}">Mon Dashboard</a></li>
+                            <li><a href="{% url 'create_property' %}">Ajouter Propriété</a></li>
+                        {% else %}
+                            <li><a href="{% url 'register' %}">Devenir Propriétaire</a></li>
+                        {% endif %}
+                        <li><a href="#">Guide du Propriétaire</a></li>
+                        <li><a href="#">Vérification</a></li>
                     </ul>
-                    <div class="mt-3">
-                        <small class="text-white-50">
-                            <i class="bi bi-shield-check"></i> No online payments. All agreements are made directly between users.
+                </div>
+                
+                <div class="col-lg-3 col-md-4 mb-4">
+                    <h5>Légal</h5>
+                    <ul class="list-unstyled">
+                        <li><a href="#">Conditions d'Utilisation</a></li>
+                        <li><a href="#">Politique de Confidentialité</a></li>
+                        <li><a href="#">Signaler un Problème</a></li>
+                    </ul>
+                    <div class="mt-3 p-3" style="background: rgba(255,255,255,0.05); border-radius: 8px;">
+                        <small>
+                            <i class="bi bi-shield-check me-2"></i>
+                            Aucun paiement en ligne. Tous les accords se font directement entre utilisateurs.
                         </small>
                     </div>
                 </div>
             </div>
-            <hr style="border-color: rgba(255,255,255,0.2)">
-            <div class="text-center">
-                <small>&copy; 2025 AyitiCaney. All rights reserved.</small>
+            
+            <hr style="border-color: rgba(255,255,255,0.2); margin: 2rem 0 1rem;">
+            
+            <div class="row align-items-center">
+                <div class="col-md-6 text-center text-md-start">
+                    <small>&copy; 2025 AyitiCaney. Tous droits réservés.</small>
+                </div>
+                <div class="col-md-6 text-center text-md-end">
+                    <small>Fait avec <i class="bi bi-heart-fill text-danger"></i> pour Haïti</small>
+                </div>
             </div>
         </div>
     </footer>
     
-    <!-- Bootstrap 5 JS -->
+    <!-- Bootstrap 5 JS Bundle -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     
-    <!-- jQuery (for AJAX) -->
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
     
-    <script>
-        // Language Switcher
-        function changeLanguage(lang) {
-            // This would typically set a cookie or session variable
-            // For now, it's a placeholder
-            console.log('Switching to language:', lang);
-            // You'll need to implement proper Django i18n language switching
-            window.location.href = `/${lang}/`;
-        }
-        
-        // CSRF Token for AJAX
-        function getCookie(name) {
-            let cookieValue = null;
-            if (document.cookie && document.cookie !== '') {
-                const cookies = document.cookie.split(';');
-                for (let i = 0; i < cookies.length; i++) {
-                    const cookie = cookies[i].trim();
-                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                        break;
-                    }
-                }
-            }
-            return cookieValue;
-        }
-        const csrftoken = getCookie('csrftoken');
-        
-        // Wishlist Toggle (AJAX)
-        function toggleWishlist(propertyId, button) {
-            $.ajax({
-                url: `/property/${propertyId}/toggle-wishlist/`,
-                type: 'POST',
-                headers: {'X-CSRFToken': csrftoken},
-                success: function(data) {
-                    if (data.is_saved) {
-                        $(button).html('<i class="bi bi-heart-fill"></i> Saved');
-                        $(button).removeClass('btn-outline-danger').addClass('btn-danger');
-                    } else {
-                        $(button).html('<i class="bi bi-heart"></i> Save');
-                        $(button).removeClass('btn-danger').addClass('btn-outline-danger');
-                    }
-                    
-                    // Show success message
-                    alert(data.message);
-                },
-                error: function() {
-                    alert('Please login to save properties');
-                }
-            });
-        }
-    </script>
+    <!-- Custom JavaScript -->
+    <script src="{% static 'rental/js/scripts.js' %}"></script>
     
     {% block extra_js %}{% endblock %}
 </body>

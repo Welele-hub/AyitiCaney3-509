@@ -1,7 +1,7 @@
 {% extends 'rental/base.html' %}
 {% load static %}
 
-{% block title %}AyitiCaney - Find Your Perfect Home in Haiti{% endblock %}
+{% block title %}AyitiCaney - Trouvez Votre Maison Parfaite en Haïti{% endblock %}
 
 {% block content %}
 
@@ -9,49 +9,57 @@
 <section class="hero-section">
     <div class="container">
         <div class="row align-items-center">
-            <div class="col-lg-6 mb-4 mb-lg-0">
-                <h1>Find Your Perfect Home in Haiti</h1>
-                <p class="lead">Connect directly with property owners across all departments. No fees, no commissions - just honest conversations.</p>
-                <div class="mt-4">
+            <div class="col-lg-6 mb-4 mb-lg-0 hero-content">
+                <p class="hero-tagline fade-in-up">Bienvenue en Haïti</p>
+                <h1 class="fade-in-up">Trouvez Votre Maison Parfaite en Haïti</h1>
+                <p class="lead fade-in-up">Connectez-vous directement avec des propriétaires de confiance. Pas de frais cachés, juste des connexions authentiques.</p>
+                <div class="mt-4 fade-in-up">
                     <a href="{% url 'search_properties' %}" class="btn btn-light btn-lg me-3">
-                        <i class="bi bi-search"></i> Search Houses
+                        <i class="bi bi-search"></i> Chercher Maisons
                     </a>
                     {% if not user.is_authenticated %}
                     <a href="{% url 'register' %}" class="btn btn-outline-light btn-lg">
-                        <i class="bi bi-person-plus"></i> Register
+                        <i class="bi bi-person-plus"></i> Inscription
                     </a>
                     {% endif %}
                 </div>
             </div>
+            
             <div class="col-lg-6">
-                <div class="card bg-white p-4 shadow-lg rounded">
-                    <h4 class="text-dark mb-3">Quick Search</h4>
+                <div class="hero-search-box fade-in-up">
+                    <h4>Recherche Rapide</h4>
                     <form action="{% url 'search_properties' %}" method="GET">
                         <div class="mb-3">
+                            <label class="form-label">Département</label>
                             <select name="department" class="form-select" id="quick-department">
-                                <option value="">Select Department</option>
+                                <option value="">Sélectionner Département</option>
                                 {% for dept in departments %}
-                                <option value="{{ dept.id }}">{{ dept.name_en }}</option>
+                                <option value="{{ dept.id }}">{{ dept.name_fr }}</option>
                                 {% endfor %}
                             </select>
                         </div>
+                        
                         <div class="mb-3">
-                            <select name="city" class="form-select" id="quick-city">
-                                <option value="">Select City</option>
+                            <label class="form-label">Ville/Commune</label>
+                            <select name="city" class="form-select" id="quick-city" disabled>
+                                <option value="">Sélectionner Ville</option>
                             </select>
                         </div>
-                        <div class="mb-3">
+                        
+                        <div class="mb-4">
+                            <label class="form-label">Type de Propriété</label>
                             <select name="property_type" class="form-select">
-                                <option value="">All Property Types</option>
-                                <option value="apartment">Apartment</option>
-                                <option value="house">House</option>
+                                <option value="">Tous Types</option>
+                                <option value="apartment">Appartement</option>
+                                <option value="house">Maison</option>
                                 <option value="studio">Studio</option>
                                 <option value="duplex">Duplex</option>
                                 <option value="villa">Villa</option>
                             </select>
                         </div>
-                        <button type="submit" class="btn btn-primary w-100 btn-lg">
-                            <i class="bi bi-search"></i> Search Now
+                        
+                        <button type="submit" class="btn btn-coral w-100 btn-lg">
+                            <i class="bi bi-search"></i> Rechercher
                         </button>
                     </form>
                 </div>
@@ -61,41 +69,97 @@
 </section>
 
 <!-- Stats Section -->
-<section class="container mb-5">
+<section class="stats-section">
+    <div class="container">
+        <div class="row g-4">
+            <div class="col-md-3 col-6">
+                <div class="stats-card hover-lift fade-in-up">
+                    <div class="stats-number">{{ stats.departments_count }}</div>
+                    <div class="stats-label">Départements</div>
+                </div>
+            </div>
+            <div class="col-md-3 col-6">
+                <div class="stats-card hover-lift fade-in-up">
+                    <div class="stats-number">100+</div>
+                    <div class="stats-label">Villes</div>
+                </div>
+            </div>
+            <div class="col-md-3 col-6">
+                <div class="stats-card hover-lift fade-in-up">
+                    <div class="stats-number">{{ stats.total_properties }}+</div>
+                    <div class="stats-label">Propriétés</div>
+                </div>
+            </div>
+            <div class="col-md-3 col-6">
+                <div class="stats-card hover-lift fade-in-up">
+                    <div class="stats-number">{{ stats.total_owners }}+</div>
+                    <div class="stats-label">Propriétaires</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Why Choose AyitiCaney -->
+<section class="container my-5 py-5">
+    <div class="section-header fade-in-up">
+        <p class="section-tagline">Comment ça marche</p>
+        <h2 class="section-title">Why Choose AyitiCaney?</h2>
+        <p class="section-subtitle">La plateforme de confiance pour trouver votre maison idéale en Haïti</p>
+    </div>
+    
     <div class="row g-4">
-        <div class="col-md-3">
-            <div class="stats-card">
-                <div class="stats-number">{{ stats.total_properties }}+</div>
-                <div class="stats-label">Properties Listed</div>
+        <div class="col-md-6 col-lg-3">
+            <div class="feature-card fade-in-up">
+                <div class="feature-icon">
+                    <i class="bi bi-shield-check"></i>
+                </div>
+                <h4>Trusted Owners</h4>
+                <p>Propriétaires vérifiés auxquels vous pouvez faire confiance</p>
             </div>
         </div>
-        <div class="col-md-3">
-            <div class="stats-card">
-                <div class="stats-number">{{ stats.available_properties }}+</div>
-                <div class="stats-label">Available Now</div>
+        
+        <div class="col-md-6 col-lg-3">
+            <div class="feature-card fade-in-up">
+                <div class="feature-icon">
+                    <i class="bi bi-chat-dots"></i>
+                </div>
+                <h4>Direct Communication</h4>
+                <p>Discutez directement avec les propriétaires via WhatsApp ou chat interne</p>
             </div>
         </div>
-        <div class="col-md-3">
-            <div class="stats-card">
-                <div class="stats-number">{{ stats.total_owners }}+</div>
-                <div class="stats-label">Property Owners</div>
+        
+        <div class="col-md-6 col-lg-3">
+            <div class="feature-card fade-in-up">
+                <div class="feature-icon">
+                    <i class="bi bi-house-check"></i>
+                </div>
+                <h4>No Hidden Fees</h4>
+                <p>Aucun paiement en ligne - accords conclus directement</p>
             </div>
         </div>
-        <div class="col-md-3">
-            <div class="stats-card">
-                <div class="stats-number">{{ stats.departments_count }}</div>
-                <div class="stats-label">Departments Covered</div>
+        
+        <div class="col-md-6 col-lg-3">
+            <div class="feature-card fade-in-up">
+                <div class="feature-icon">
+                    <i class="bi bi-geo-alt"></i>
+                </div>
+                <h4>All Haiti Coverage</h4>
+                <p>Propriétés dans tous les 10 départements d'Haïti</p>
             </div>
         </div>
     </div>
 </section>
 
 <!-- Featured Properties -->
-<section class="container mb-5">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2><i class="bi bi-star-fill text-warning"></i> Featured Properties</h2>
+<section class="container my-5 py-5">
+    <div class="d-flex justify-content-between align-items-center mb-5 fade-in-up">
+        <div>
+            <p class="section-tagline mb-2">Propriétés récentes</p>
+            <h2 class="section-title mb-0">Featured Properties</h2>
+        </div>
         <a href="{% url 'search_properties' %}" class="btn btn-outline-primary">
-            View All <i class="bi bi-arrow-right"></i>
+            View All <i class="bi bi-arrow-right ms-2"></i>
         </a>
     </div>
     
@@ -103,46 +167,50 @@
     <div class="row g-4">
         {% for property in featured_properties %}
         <div class="col-md-6 col-lg-3">
-            <div class="card property-card h-100">
+            <div class="property-card fade-in-up hover-lift">
                 {% if property.images.all %}
                     <img src="{{ property.images.all.0.image.url }}" class="card-img-top" alt="{{ property.title }}">
                 {% else %}
-                    <div class="bg-light d-flex align-items-center justify-content-center" style="height: 200px;">
-                        <i class="bi bi-house-door fs-1 text-muted"></i>
+                    <div class="bg-light-gray d-flex align-items-center justify-content-center" style="height: 220px;">
+                        <i class="bi bi-house-door display-1 text-secondary"></i>
                     </div>
                 {% endif %}
                 
                 <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-start mb-2">
-                        <span class="badge bg-primary">{{ property.get_property_type_display }}</span>
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <span class="property-badge badge-primary">
+                            {{ property.get_property_type_display }}
+                        </span>
                         {% if property.owner.is_verified %}
-                        <span class="badge badge-verified">
-                            <i class="bi bi-patch-check-fill"></i> Verified
+                        <span class="property-badge badge-verified">
+                            <i class="bi bi-patch-check-fill"></i> Vérifié
                         </span>
                         {% endif %}
                     </div>
                     
-                    <h5 class="card-title">{{ property.title|truncatewords:6 }}</h5>
+                    <h5 class="card-title">{{ property.title|truncatewords:5 }}</h5>
                     
-                    <p class="text-muted mb-2">
-                        <i class="bi bi-geo-alt"></i> {{ property.city.name_en }}, {{ property.department.name_en }}
+                    <p class="text-muted mb-3">
+                        <i class="bi bi-geo-alt-fill"></i> {{ property.city.name_fr }}, {{ property.department.name_fr }}
                     </p>
                     
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <small class="text-muted">
-                            <i class="bi bi-door-closed"></i> {{ property.bedrooms }} bed
-                            <i class="bi bi-droplet ms-2"></i> {{ property.bathrooms }} bath
-                        </small>
+                    <div class="d-flex justify-content-between text-muted small mb-3">
+                        <span><i class="bi bi-door-closed"></i> {{ property.bedrooms }} chambres</span>
+                        <span><i class="bi bi-droplet"></i> {{ property.bathrooms }} bains</span>
                     </div>
                     
-                    <h4 class="text-primary mb-3">{{ property.price|floatformat:0 }} HTG <small class="text-muted fs-6">/month</small></h4>
+                    <div class="price mb-3">
+                        <span class="price-value">{{ property.price|floatformat:0 }}</span> HTG 
+                        <small>/mois</small>
+                    </div>
                     
                     <div class="d-flex gap-2">
-                        <a href="{% url 'property_detail' property.id %}" class="btn btn-primary btn-sm flex-grow-1">
-                            <i class="bi bi-eye"></i> View Details
+                        <a href="{% url 'property_detail' property.id %}" class="btn btn-primary flex-grow-1">
+                            <i class="bi bi-eye"></i> Voir Détails
                         </a>
                         {% if user.is_authenticated and user.account_type == 'locataire' %}
-                        <button onclick="toggleWishlist({{ property.id }}, this)" class="btn btn-outline-danger btn-sm">
+                        <button onclick="toggleWishlist({{ property.id }}, this)" 
+                                class="btn btn-outline-danger">
                             <i class="bi bi-heart"></i>
                         </button>
                         {% endif %}
@@ -153,96 +221,72 @@
         {% endfor %}
     </div>
     {% else %}
-    <div class="alert alert-info">
-        <i class="bi bi-info-circle"></i> No properties available yet. Be the first to list your property!
+    <div class="alert alert-info fade-in-up">
+        <i class="bi bi-info-circle me-2"></i> 
+        Aucune propriété disponible pour le moment. Soyez le premier à ajouter votre propriété!
     </div>
     {% endif %}
 </section>
 
-<!-- How It Works -->
-<section class="bg-light py-5 mb-5">
-    <div class="container">
-        <h2 class="text-center mb-5">How AyitiCaney Works</h2>
-        
-        <div class="row g-4">
-            <div class="col-md-4">
-                <div class="text-center">
-                    <div class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 80px; height: 80px;">
-                        <i class="bi bi-search fs-1"></i>
-                    </div>
-                    <h4>1. Search Properties</h4>
-                    <p>Browse houses across all 10 departments of Haiti. Filter by location, price, and type.</p>
-                </div>
+<!-- For Property Owners CTA -->
+<section class="container my-5 py-5">
+    <div class="cta-section fade-in-up">
+        <div class="row align-items-center">
+            <div class="col-lg-8 text-center text-lg-start mb-4 mb-lg-0">
+                <h2 class="mb-3">Êtes-vous Propriétaire?</h2>
+                <p class="mb-0">Listez votre propriété gratuitement et connectez-vous avec des milliers de locataires potentiels</p>
             </div>
-            
-            <div class="col-md-4">
-                <div class="text-center">
-                    <div class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 80px; height: 80px;">
-                        <i class="bi bi-chat-dots fs-1"></i>
-                    </div>
-                    <h4>2. Contact Owner</h4>
-                    <p>Chat directly with property owners via our platform or WhatsApp. No middleman.</p>
-                </div>
-            </div>
-            
-            <div class="col-md-4">
-                <div class="text-center">
-                    <div class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 80px; height: 80px;">
-                        <i class="bi bi-handshake fs-1"></i>
-                    </div>
-                    <h4>3. Meet & Agree</h4>
-                    <p>Schedule a visit, discuss terms, and finalize your agreement in person.</p>
-                </div>
+            <div class="col-lg-4 text-center text-lg-end">
+                {% if user.is_authenticated and user.account_type == 'proprietaire' %}
+                    <a href="{% url 'create_property' %}" class="btn btn-light btn-lg">
+                        <i class="bi bi-plus-circle"></i> Ajouter Propriété
+                    </a>
+                {% else %}
+                    <a href="{% url 'register' %}" class="btn btn-light btn-lg">
+                        <i class="bi bi-person-plus"></i> Devenir Propriétaire
+                    </a>
+                {% endif %}
             </div>
         </div>
     </div>
 </section>
 
-<!-- For Property Owners -->
-<section class="container mb-5">
-    <div class="row align-items-center">
-        <div class="col-lg-6 mb-4 mb-lg-0">
-            <h2 class="mb-4">Are You a Property Owner?</h2>
-            <p class="lead">List your property on AyitiCaney and connect with thousands of potential renters.</p>
-            
-            <ul class="list-unstyled">
-                <li class="mb-3">
-                    <i class="bi bi-check-circle-fill text-success fs-4 me-2"></i>
-                    <strong>Free to List</strong> - No hidden fees or commissions
-                </li>
-                <li class="mb-3">
-                    <i class="bi bi-check-circle-fill text-success fs-4 me-2"></i>
-                    <strong>Direct Contact</strong> - Communicate directly with interested renters
-                </li>
-                <li class="mb-3">
-                    <i class="bi bi-check-circle-fill text-success fs-4 me-2"></i>
-                    <strong>Full Control</strong> - Manage your listings anytime
-                </li>
-                <li class="mb-3">
-                    <i class="bi bi-check-circle-fill text-success fs-4 me-2"></i>
-                    <strong>Verified Badge</strong> - Get verified to build trust
-                </li>
-            </ul>
-            
-            {% if user.is_authenticated and user.account_type == 'proprietaire' %}
-                <a href="{% url 'create_property' %}" class="btn btn-success btn-lg">
-                    <i class="bi bi-plus-circle"></i> List Your Property
-                </a>
-            {% else %}
-                <a href="{% url 'register' %}" class="btn btn-success btn-lg">
-                    <i class="bi bi-person-plus"></i> Register as Owner
-                </a>
-            {% endif %}
+<!-- How It Works -->
+<section class="bg-light-gray py-5 my-5">
+    <div class="container">
+        <div class="section-header fade-in-up">
+            <p class="section-tagline">Simple et Efficace</p>
+            <h2 class="section-title">Comment AyitiCaney Fonctionne</h2>
         </div>
         
-        <div class="col-lg-6">
-            <div class="card shadow-lg border-0">
-                <div class="card-body p-5 bg-gradient" style="background: linear-gradient(135deg, var(--secondary-blue) 0%, var(--primary-blue) 100%);">
-                    <div class="text-white text-center">
-                        <i class="bi bi-building fs-1 mb-3"></i>
-                        <h3>Join {{ stats.total_owners }}+ Property Owners</h3>
-                        <p>Already using AyitiCaney to find quality tenants</p>
+        <div class="row g-5">
+            <div class="col-md-4">
+                <div class="text-center fade-in-up">
+                    <div class="feature-icon d-inline-flex mb-4">
+                        <i class="bi bi-search"></i>
                     </div>
+                    <h4 class="mb-3">1. Recherchez</h4>
+                    <p class="text-muted">Parcourez les propriétés dans tous les départements d'Haïti. Filtrez par emplacement, prix et type.</p>
+                </div>
+            </div>
+            
+            <div class="col-md-4">
+                <div class="text-center fade-in-up">
+                    <div class="feature-icon d-inline-flex mb-4">
+                        <i class="bi bi-chat-dots"></i>
+                    </div>
+                    <h4 class="mb-3">2. Contactez</h4>
+                    <p class="text-muted">Discutez directement avec le propriétaire via notre plateforme ou WhatsApp. Aucun intermédiaire.</p>
+                </div>
+            </div>
+            
+            <div class="col-md-4">
+                <div class="text-center fade-in-up">
+                    <div class="feature-icon d-inline-flex mb-4">
+                        <i class="bi bi-handshake"></i>
+                    </div>
+                    <h4 class="mb-3">3. Rencontrez</h4>
+                    <p class="text-muted">Planifiez une visite, discutez des conditions et finalisez votre accord en personne.</p>
                 </div>
             </div>
         </div>
@@ -250,85 +294,47 @@
 </section>
 
 <!-- Trust & Safety -->
-<section class="bg-light py-5 mb-5">
-    <div class="container">
-        <h2 class="text-center mb-5">Trust & Safety</h2>
-        
-        <div class="row justify-content-center">
-            <div class="col-md-8">
-                <div class="alert alert-warning border-warning">
-                    <h5 class="alert-heading">
-                        <i class="bi bi-shield-exclamation"></i> Important Disclaimer
-                    </h5>
-                    <p>{{ site_settings.disclaimer_en }}</p>
-                    <hr>
-                    <p class="mb-0">
-                        <strong>Safety Tips:</strong>
-                    </p>
-                    <ul class="mb-0">
-                        <li>Always visit the property in person before making any agreement</li>
-                        <li>Never send money before viewing the property</li>
-                        <li>Verify the owner's identity and property ownership</li>
-                        <li>Report suspicious listings immediately</li>
-                    </ul>
+<section class="container my-5 py-5">
+    <div class="row justify-content-center fade-in-up">
+        <div class="col-lg-8">
+            <div class="alert alert-warning border-0 shadow-custom">
+                <div class="d-flex align-items-start">
+                    <i class="bi bi-shield-exclamation display-5 me-3" style="color: var(--accent-gold);"></i>
+                    <div>
+                        <h5 class="alert-heading mb-3">Avertissement Important</h5>
+                        <p>{{ site_settings.disclaimer_fr }}</p>
+                        <hr class="my-3">
+                        <p class="mb-2"><strong>Conseils de Sécurité:</strong></p>
+                        <ul class="mb-0">
+                            <li>Visitez toujours la propriété en personne avant tout accord</li>
+                            <li>Ne jamais envoyer d'argent avant de voir la propriété</li>
+                            <li>Vérifiez l'identité du propriétaire et la propriété</li>
+                            <li>Signalez immédiatement les annonces suspectes</li>
+                        </ul>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 </section>
 
-<!-- CTA Section -->
-{% if not user.is_authenticated %}
-<section class="container mb-5">
-    <div class="card bg-primary text-white border-0 shadow-lg">
-        <div class="card-body p-5 text-center">
-            <h2 class="mb-3">Ready to Find Your Perfect Home?</h2>
-            <p class="lead mb-4">Join thousands of Haitians finding their ideal rental properties</p>
-            <div class="d-flex gap-3 justify-content-center">
-                <a href="{% url 'register' %}" class="btn btn-light btn-lg">
-                    <i class="bi bi-person-plus"></i> Register Now
-                </a>
-                <a href="{% url 'search_properties' %}" class="btn btn-outline-light btn-lg">
-                    <i class="bi bi-search"></i> Browse Properties
-                </a>
-            </div>
-        </div>
-    </div>
-</section>
-{% endif %}
-
 {% endblock %}
 
 {% block extra_js %}
 <script>
-    // Dynamic city loading for quick search
-    $('#quick-department').change(function() {
-        const departmentId = $(this).val();
-        const citySelect = $('#quick-city');
-        
-        citySelect.html('<option value="">Loading...</option>');
-        
-        if (departmentId) {
-            $.ajax({
-                url: '{% url "get_cities_ajax" %}',
-                type: 'POST',
-                data: {
-                    'department_id': departmentId,
-                    'csrfmiddlewaretoken': csrftoken
-                },
-                success: function(data) {
-                    citySelect.html('<option value="">All Cities</option>');
-                    data.cities.forEach(function(city) {
-                        citySelect.append(`<option value="${city.id}">${city.name_en}</option>`);
-                    });
-                },
-                error: function() {
-                    citySelect.html('<option value="">Error loading cities</option>');
-                }
-            });
-        } else {
-            citySelect.html('<option value="">Select City</option>');
-        }
+    // Smooth animations on scroll
+    $(window).on('load scroll', function() {
+        $('.fade-in-up').each(function() {
+            const elementTop = $(this).offset().top;
+            const viewportBottom = $(window).scrollTop() + $(window).height();
+            
+            if (elementTop < viewportBottom - 50) {
+                $(this).css({
+                    'opacity': '1',
+                    'transform': 'translateY(0)'
+                });
+            }
+        });
     });
 </script>
 {% endblock %}

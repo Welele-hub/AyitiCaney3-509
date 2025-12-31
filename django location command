@@ -1,0 +1,149 @@
+"""
+Management command to populate Haiti's departments and cities
+Save this file as: management/commands/populate_haiti_locations.py
+
+Run with: python manage.py populate_haiti_locations
+"""
+
+from django.core.management.base import BaseCommand
+from django.utils.text import slugify
+from rental.models import Department, City
+
+
+class Command(BaseCommand):
+    help = 'Populate Haiti departments and cities'
+
+    def handle(self, *args, **kwargs):
+        self.stdout.write(self.style.SUCCESS('Starting to populate Haiti locations...'))
+        
+        # Haiti's 10 departments with major cities
+        haiti_data = {
+            'Ouest': {
+                'name_fr': 'Ouest',
+                'cities': [
+                    'Port-au-Prince', 'Pétion-Ville', 'Delmas', 'Carrefour',
+                    'Croix-des-Bouquets', 'Kenscoff', 'Gressier', 'Léogâne',
+                    'Arcahaie', 'Cabaret', 'Cornillon', 'Ganthier', 'Thomazeau'
+                ]
+            },
+            'Nord': {
+                'name_fr': 'Nord',
+                'cities': [
+                    'Cap-Haïtien', 'Milot', 'Acul-du-Nord', 'Grande-Rivière-du-Nord',
+                    'Limonade', 'Plaisance', 'Quartier-Morin', 'Saint-Raphaël',
+                    'Dondon', 'Bahon', 'Ranquitte', 'Pignon'
+                ]
+            },
+            'Nord-Est': {
+                'name_fr': 'Nord-Est',
+                'cities': [
+                    'Fort-Liberté', 'Ouanaminthe', 'Trou-du-Nord', 'Terrier-Rouge',
+                    'Vallières', 'Mont-Organisé', 'Perches', 'Carice', 'Ferrier',
+                    'Mombin-Crochu'
+                ]
+            },
+            'Nord-Ouest': {
+                'name_fr': 'Nord-Ouest',
+                'cities': [
+                    'Port-de-Paix', 'Saint-Louis-du-Nord', 'Anse-à-Foleur',
+                    'Bombardopolis', 'Môle-Saint-Nicolas', 'Bassin-Bleu',
+                    'Baie-de-Henne', 'Jean-Rabel', 'Chansolme', 'La Tortue'
+                ]
+            },
+            'Artibonite': {
+                'name_fr': 'Artibonite',
+                'cities': [
+                    'Gonaïves', 'Saint-Marc', 'Dessalines', 'Gros-Morne',
+                    'Ennery', 'Grande-Saline', 'L\'Estère', 'Verrettes',
+                    'Petite-Rivière-de-l\'Artibonite', 'Desdunes', 'Marmelade'
+                ]
+            },
+            'Centre': {
+                'name_fr': 'Centre',
+                'cities': [
+                    'Hinche', 'Mirebalais', 'Lascahobas', 'Thomonde',
+                    'Cerca-la-Source', 'Cerca-Carvajal', 'Maïssade',
+                    'Thomassique', 'Savanette', 'Belladère', 'Baptiste',
+                    'Boucan-Carré'
+                ]
+            },
+            'Sud': {
+                'name_fr': 'Sud',
+                'cities': [
+                    'Les Cayes', 'Aquin', 'Saint-Louis-du-Sud', 'Cavaillon',
+                    'Torbeck', 'Chardonnières', 'Port-Salut', 'Arniquet',
+                    'Maniche', 'Côteaux', 'Port-à-Piment', 'Roche-à-Bateau',
+                    'Tiburon', 'Camp-Perrin'
+                ]
+            },
+            'Sud-Est': {
+                'name_fr': 'Sud-Est',
+                'cities': [
+                    'Jacmel', 'Cayes-Jacmel', 'Marigot', 'Bainet',
+                    'Côtes-de-Fer', 'Belle-Anse', 'Anse-à-Pitre',
+                    'Thiotte', 'Grand-Gosier', 'La Vallée-de-Jacmel'
+                ]
+            },
+            'Grande-Anse': {
+                'name_fr': 'Grand\'Anse',
+                'cities': [
+                    'Jérémie', 'Anse-d\'Hainault', 'Dame-Marie', 'Les Irois',
+                    'Abricots', 'Bonbon', 'Chambellan', 'Corail',
+                    'Moron', 'Pestel', 'Roseaux', 'Beaumont'
+                ]
+            },
+            'Nippes': {
+                'name_fr': 'Nippes',
+                'cities': [
+                    'Miragoâne', 'Anse-à-Veau', 'Petit-Trou-de-Nippes',
+                    'Baradères', 'Petite-Rivière-de-Nippes', 'Fonds-des-Nègres',
+                    'L\'Asile', 'Arnaud', 'Paillant', 'Plaisance-du-Sud'
+                ]
+            }
+        }
+        
+        departments_created = 0
+        cities_created = 0
+        
+        for dept_name_en, dept_data in haiti_data.items():
+            # Create or get department
+            department, created = Department.objects.get_or_create(
+                slug=slugify(dept_name_en),
+                defaults={
+                    'name_en': dept_name_en,
+                    'name_fr': dept_data['name_fr'],
+                }
+            )
+            
+            if created:
+                departments_created += 1
+                self.stdout.write(
+                    self.style.SUCCESS(f'✓ Created department: {dept_name_en}')
+                )
+            else:
+                self.stdout.write(
+                    self.style.WARNING(f'○ Department already exists: {dept_name_en}')
+                )
+            
+            # Create cities for this department
+            for city_name in dept_data['cities']:
+                city, created = City.objects.get_or_create(
+                    department=department,
+                    slug=slugify(city_name),
+                    defaults={
+                        'name_en': city_name,
+                        'name_fr': city_name,  # Same for both languages
+                    }
+                )
+                
+                if created:
+                    cities_created += 1
+                    self.stdout.write(f'  → Created city: {city_name}')
+        
+        self.stdout.write(
+            self.style.SUCCESS(
+                f'\n✓ Population complete!'
+                f'\n  Departments created: {departments_created}'
+                f'\n  Cities created: {cities_created}'
+            )
+        )

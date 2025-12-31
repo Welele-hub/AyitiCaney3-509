@@ -1,0 +1,434 @@
+# 🏠 AyitiCaney - Professional House Rental Platform for Haiti
+
+A Django-based rental platform connecting property owners (propriétaires) and renters (locataires) across all 10 departments of Haiti. Built with trust, transparency, and direct communication in mind.
+
+## 🎯 Key Features
+
+### For Users (Locataires)
+- ✅ Browse properties across all Haiti departments
+- ✅ Advanced search and filtering
+- ✅ Save favorite properties (Wishlist)
+- ✅ Direct messaging with property owners
+- ✅ WhatsApp integration
+- ✅ Bilingual interface (English/French)
+
+### For Property Owners (Propriétaires)
+- ✅ Free property listings
+- ✅ Upload multiple property images
+- ✅ Manage listings dashboard
+- ✅ Direct communication with interested renters
+- ✅ Verified owner badge system
+- ✅ View analytics (views, saves, conversations)
+
+### For Administrators
+- ✅ Comprehensive admin panel
+- ✅ Property approval system
+- ✅ User moderation and suspension
+- ✅ Conversation monitoring (read-only)
+- ✅ Report management
+- ✅ Site settings configuration
+
+## 🚀 Technology Stack
+
+- **Backend**: Django 4.2+
+- **Database**: PostgreSQL (or SQLite for development)
+- **Frontend**: Bootstrap 5, HTML5, CSS3, JavaScript
+- **Icons**: Bootstrap Icons
+- **Language**: Python 3.10+
+
+## 📦 Installation & Setup
+
+### 1. Prerequisites
+
+```bash
+# Install Python 3.10+
+python --version
+
+# Install PostgreSQL (optional, can use SQLite for dev)
+sudo apt-get install postgresql postgresql-contrib
+```
+
+### 2. Clone or Create Project
+
+```bash
+# Create Django project
+django-admin startproject ayiticaney_project
+cd ayiticaney_project
+
+# Create the rental app
+python manage.py startapp rental
+```
+
+### 3. Install Dependencies
+
+```bash
+# Create virtual environment
+python -m venv venv
+
+# Activate virtual environment
+# On Linux/Mac:
+source venv/bin/activate
+# On Windows:
+venv\Scripts\activate
+
+# Install Django and dependencies
+pip install django pillow psycopg2-binary
+
+# Create requirements.txt
+pip freeze > requirements.txt
+```
+
+### 4. Project Structure
+
+```
+ayiticaney_project/
+├── rental/
+│   ├── migrations/
+│   ├── management/
+│   │   └── commands/
+│   │       └── populate_haiti_locations.py
+│   ├── templates/
+│   │   └── rental/
+│   │       ├── base.html
+│   │       ├── home.html
+│   │       ├── search_properties.html
+│   │       ├── property_detail.html
+│   │       ├── register.html
+│   │       ├── login.html
+│   │       └── ... (other templates)
+│   ├── static/
+│   │   └── rental/
+│   │       ├── css/
+│   │       ├── js/
+│   │       └── images/
+│   ├── models.py
+│   ├── admin.py
+│   ├── views.py
+│   ├── forms.py
+│   ├── urls.py
+│   └── apps.py
+├── media/
+│   ├── profiles/
+│   └── properties/
+├── static/
+├── templates/
+├── logs/
+├── manage.py
+├── requirements.txt
+└── settings.py
+```
+
+### 5. Configure Settings
+
+Update `settings.py` with the provided configuration, especially:
+
+```python
+# Add to INSTALLED_APPS
+INSTALLED_APPS = [
+    # ...
+    'rental',
+]
+
+# Set custom user model
+AUTH_USER_MODEL = 'rental.User'
+
+# Configure database
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'ayiticaney_db',
+        'USER': 'your_username',
+        'PASSWORD': 'your_password',
+        'HOST': 'localhost',
+        'PORT': '5432',
+    }
+}
+
+# Media files
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
+```
+
+### 6. Configure URLs
+
+**Main `urls.py`:**
+
+```python
+from django.contrib import admin
+from django.urls import path, include
+from django.conf import settings
+from django.conf.urls.static import static
+
+urlpatterns = [
+    path('admin/', admin.site.urls),
+    path('', include('rental.urls')),
+]
+
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+```
+
+### 7. Run Migrations
+
+```bash
+# Make migrations
+python manage.py makemigrations
+
+# Apply migrations
+python manage.py migrate
+```
+
+### 8. Create Superuser
+
+```bash
+python manage.py createsuperuser
+```
+
+### 9. Populate Haiti Locations
+
+```bash
+# Run the management command
+python manage.py populate_haiti_locations
+```
+
+This will create:
+- 10 Departments of Haiti
+- 100+ Cities and communes
+
+### 10. Collect Static Files (Production)
+
+```bash
+python manage.py collectstatic
+```
+
+### 11. Run Development Server
+
+```bash
+python manage.py runserver
+```
+
+Visit: `http://127.0.0.1:8000`
+
+## 📝 Creating Sample Data
+
+### Create Sample Users via Admin
+
+1. Go to `http://127.0.0.1:8000/admin`
+2. Login with superuser credentials
+3. Create users with both account types:
+   - Locataires (Renters)
+   - Propriétaires (Owners)
+
+### Create Sample Properties
+
+1. Login as a Propriétaire
+2. Go to "List Property"
+3. Fill in property details
+4. Upload images
+5. Submit for approval
+
+### Admin Approval
+
+1. Login to admin panel
+2. Go to Properties
+3. Select properties
+4. Use action: "Approve selected properties"
+
+## 🌐 Deployment (Production)
+
+### Using Gunicorn + Nginx
+
+```bash
+# Install Gunicorn
+pip install gunicorn
+
+# Create Gunicorn systemd service
+sudo nano /etc/systemd/system/gunicorn.service
+```
+
+**gunicorn.service:**
+
+```ini
+[Unit]
+Description=gunicorn daemon for AyitiCaney
+After=network.target
+
+[Service]
+User=www-data
+Group=www-data
+WorkingDirectory=/path/to/ayiticaney_project
+ExecStart=/path/to/venv/bin/gunicorn --workers 3 --bind unix:/run/gunicorn.sock ayiticaney_project.wsgi:application
+
+[Install]
+WantedBy=multi-user.target
+```
+
+**Nginx Configuration:**
+
+```nginx
+server {
+    listen 80;
+    server_name ayiticaney.ht www.ayiticaney.ht;
+
+    location = /favicon.ico { access_log off; log_not_found off; }
+    
+    location /static/ {
+        alias /path/to/ayiticaney_project/staticfiles/;
+    }
+    
+    location /media/ {
+        alias /path/to/ayiticaney_project/media/;
+    }
+
+    location / {
+        proxy_pass http://unix:/run/gunicorn.sock;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+}
+```
+
+### Environment Variables (Production)
+
+Create `.env` file:
+
+```env
+SECRET_KEY=your-production-secret-key
+DEBUG=False
+ALLOWED_HOSTS=ayiticaney.ht,www.ayiticaney.ht
+DATABASE_URL=postgresql://user:password@localhost/ayiticaney_db
+EMAIL_HOST_USER=your-email@domain.com
+EMAIL_HOST_PASSWORD=your-email-password
+```
+
+## 🔒 Security Checklist
+
+- [ ] Change `SECRET_KEY` in production
+- [ ] Set `DEBUG = False`
+- [ ] Configure `ALLOWED_HOSTS`
+- [ ] Enable HTTPS/SSL
+- [ ] Set up CSRF protection
+- [ ] Configure secure cookies
+- [ ] Set up backup system
+- [ ] Enable logging
+- [ ] Configure firewall
+- [ ] Set up regular updates
+
+## 📱 Mobile Responsiveness
+
+The platform is fully responsive and works on:
+- ✅ Desktop (1920px+)
+- ✅ Laptop (1366px - 1920px)
+- ✅ Tablet (768px - 1366px)
+- ✅ Mobile (320px - 768px)
+
+## 🌍 Internationalization
+
+The platform supports:
+- 🇺🇸 English
+- 🇫🇷 French (Default)
+
+To add translations:
+
+```bash
+# Create message files
+python manage.py makemessages -l fr
+
+# Compile messages
+python manage.py compilemessages
+```
+
+## 🐛 Troubleshooting
+
+### Issue: Cities not loading dynamically
+
+**Solution:** Ensure jQuery is loaded before your custom scripts and CSRF token is properly configured.
+
+### Issue: Images not displaying
+
+**Solution:** Check `MEDIA_ROOT` and `MEDIA_URL` settings, ensure media URL is configured in main `urls.py`.
+
+### Issue: Email not sending
+
+**Solution:** For development, use console backend:
+```python
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+```
+
+## 📊 Admin Panel Features
+
+Access at: `http://yourdomain.com/admin`
+
+### Dashboard Sections:
+1. **Users Management**
+   - View all users (locataires & propriétaires)
+   - Suspend/verify accounts
+   - View user activity
+
+2. **Property Management**
+   - Approve/reject listings
+   - Edit property details
+   - View reports
+
+3. **Messaging System**
+   - Monitor conversations (read-only)
+   - Moderate inappropriate content
+
+4. **Reports**
+   - Review property reports
+   - Take action on violations
+
+5. **Site Settings**
+   - Update disclaimers
+   - Manage contact information
+   - Enable/disable features
+
+## 🤝 Contributing
+
+Contributions are welcome! Please:
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Submit a pull request
+
+## 📄 License
+
+This project is proprietary software for AyitiCaney.
+
+## 📞 Support
+
+For support or questions:
+- Email: contact@ayiticaney.ht
+- Phone: +509 XXXX XXXX
+
+## 🎉 Credits
+
+Built with ❤️ for Haiti by the AyitiCaney Team
+
+---
+
+**Important Legal Disclaimer:**
+
+> AyitiCaney is a connection platform. No online payments are made on this website. All agreements are done directly between owner and user. We do not guarantee the accuracy of listings or the behavior of users.
+
+---
+
+## 🚀 Quick Start Commands
+
+```bash
+# Initial setup
+python manage.py migrate
+python manage.py createsuperuser
+python manage.py populate_haiti_locations
+
+# Run server
+python manage.py runserver
+
+# Access admin
+http://127.0.0.1:8000/admin
+
+# Access site
+http://127.0.0.1:8000
+```
+
+Good luck with AyitiCaney! 🏠🇭🇹
